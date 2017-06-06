@@ -150,7 +150,7 @@ coverage-build: all
 		"$(CURDIR)/testing/coverage/gcovr-patches.diff"); fi
 	if [ -d lib_ ]; then $(RM) -r lib; mv lib_ lib; fi
 	mv lib lib_
-	$(NODE) ./node_modules/.bin/nyc instrument lib_/ lib/
+	$(NODE) ./node_modules/.bin/nyc instrument --extension .js --extension .mjs lib_/ lib/
 	$(MAKE)
 
 coverage-test: coverage-build
@@ -887,6 +887,8 @@ JSLINT_TARGETS = benchmark doc lib test tools
 jslint:
 	@echo "Running JS linter..."
 	$(NODE) tools/eslint/bin/eslint.js --cache --rulesdir=tools/eslint-rules --ext=.js,.md \
+	  $(JSLINT_TARGETS)
+	$(NODE) tools/eslint/bin/eslint.js --cache --rulesdir=tools/eslint-rules --parser-options=sourceType:module --ext=.mjs \
 	  $(JSLINT_TARGETS)
 
 jslint-ci:

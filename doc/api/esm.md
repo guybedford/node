@@ -16,7 +16,7 @@ Not all features of the EP are complete and will be landing as both VM support a
 
 The `--experimental-modules` flag can be used to enable features for loading ESM modules.
 
-Once this has been set, you can use files ending with `.mjs` as ES Modules.
+Once this has been set, files ending with `.mjs` will be able to be loaded as ES Modules.
 
 ```sh
 node --experimental-modules my-app.mjs
@@ -28,11 +28,12 @@ node --experimental-modules my-app.mjs
 
 ### Supported
 
-Only the CLI argument for the main entry point to your program can be an entry point into an ESM graph. In the future you can use `import()` to create entry points into ESM graphs at run time.
+Only the CLI argument for the main entry point to the program can be an entry point into an ESM graph. In the future `import()` can be used to create entry points into ESM graphs at run time.
 
 ### Unsupported
 
 | Feature | Reason |
+| --- | --- |
 | `require('./foo.mjs')` | ES Modules have differing resolution and timing, use language standard `import()` |
 | `import()` | pending newer V8 release used in Node.js |
 | `import.meta` | pending V8 implementation |
@@ -42,7 +43,7 @@ Only the CLI argument for the main entry point to your program can be an entry p
 
 ### No NODE_PATH
 
-`NODE_PATH` is not part of resolving `import` specifiers. Please use symlinks if you need behavior like this.
+`NODE_PATH` is not part of resolving `import` specifiers. Please use symlinks if this behavior is desired.
 
 ### No `require.extensions`
 

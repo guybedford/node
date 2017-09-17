@@ -117,6 +117,7 @@ rules:
   keyword-spacing: error
   linebreak-style: [error, unix]
   max-len: [error, {code: 80,
+                ignorePattern: "^\/\/ Flags:",
                 ignoreRegExpLiterals: true,
                 ignoreUrls: true,
                 tabWidth: 2}]

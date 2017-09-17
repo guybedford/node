@@ -11,8 +11,8 @@ async function builtinNamedExportsLoader (url) {
     exports: builtinExports,
     execute: exports => {
       for (let name of builtinExports)
-        exports[name] = builtinInstance[name];
-      exports.default = builtinInstance;
+        exports[name].set(builtinInstance[name]);
+      exports.default.set(builtinInstance);
     }
   };
 }

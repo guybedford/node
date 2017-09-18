@@ -8,14 +8,14 @@ module.exports = {
     if (builtins.has(specifier)) {
       return {
         url: specifier,
-        loader: 'builtin'
+        format: 'builtin'
       };
     }
     // load all dependencies as esm, regardless of file extension
     const url = new URL(specifier, base);
     return {
       url,
-      loader: 'esm'
+      format: 'esm'
     };
   }
 };

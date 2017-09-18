@@ -12,7 +12,7 @@ module.exports = {
       };
     }
     // load all dependencies as esm, regardless of file extension
-    const url = new URL(specifier, base);
+    const url = new URL(specifier, base).href;
     return {
       url,
       format: 'esm'

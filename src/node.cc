@@ -3731,7 +3731,6 @@ static void RawDebug(const FunctionCallbackInfo<Value>& args) {
   fflush(stderr);
 }
 
-
 void LoadEnvironment(Environment* env) {
   HandleScope handle_scope(env->isolate());
 
@@ -3754,6 +3753,7 @@ void LoadEnvironment(Environment* env) {
   }
   // The bootstrap_node.js file returns a function 'f'
   CHECK(f_value->IsFunction());
+
   Local<Function> f = Local<Function>::Cast(f_value);
 
   // Add a reference to the global object
@@ -3793,7 +3793,21 @@ void LoadEnvironment(Environment* env) {
   // who do not like how bootstrap_node.js sets up the module system but do
   // like Node's I/O bindings may want to replace 'f' with their own function.
   Local<Value> arg = env->process_object();
-  f->Call(Null(env->isolate()), 1, &arg);
+  if (f->IsAsyncFunction()) {
+    Local<Promise> bootstrap_promise =
+        f->Call(Null(env->isolate()), 1, &arg).As<Promise>();
+
+    env->isolate()->RunMicrotasks();
+
+    // once all work has been done, bootstrap should have resolved
+    if (bootstrap_promise->State() == Promise::kRejected) {
+      auto bootstrap_error = bootstrap_promise->Result().As<Object>();
+      FatalException(env->isolate(), bootstrap_error,
+          Exception::CreateMessage(env->isolate(), bootstrap_error));
+    }
+  } else {
+    f->Call(Null(env->isolate()), 1, &arg);
+  }
 }
 
 static void PrintHelp() {
@@ -4122,7 +4136,8 @@ static void ParseArgs(int* argc,
     }  else if (strcmp(arg, "--loader") == 0) {
       const char* module = argv[index + 1];
       if (!config_experimental_modules) {
-        fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n", argv[0], arg);
+        fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+            argv[0], arg);
         exit(9);
       }
       if (module == nullptr) {

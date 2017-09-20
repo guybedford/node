@@ -1,4 +1,4 @@
-// Flags: --experimental-modules --loader ./test/fixtures/es-module-loaders/builtin-named-exports-loader.js
+// Flags: --experimental-modules --loader ./test/fixtures/es-module-loaders/builtin-named-exports-loader.mjs
 /* eslint-disable required-modules */
 import { readFile } from 'fs';
 import assert from 'assert';

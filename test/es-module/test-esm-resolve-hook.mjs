@@ -1,4 +1,4 @@
-// Flags: --experimental-modules --loader ./test/fixtures/es-module-loaders/js-loader.js
+// Flags: --experimental-modules --loader ./test/fixtures/es-module-loaders/js-loader.mjs
 /* eslint-disable required-modules */
 import { namedExport } from '../fixtures/es-module-loaders/js-as-esm.js';
 import assert from 'assert';

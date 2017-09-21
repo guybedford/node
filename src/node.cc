@@ -3797,16 +3797,17 @@ void LoadEnvironment(Environment* env) {
     Local<Promise> bootstrap_promise =
         f->Call(Null(env->isolate()), 1, &arg).As<Promise>();
 
-    env->isolate()->RunMicrotasks();
+    // mini bootstrap event loop!
+    while (bootstrap_promise->State() == Promise::kPending) {
+      env->isolate()->RunMicrotasks();
+      uv_run(env->event_loop(), UV_RUN_DEFAULT);
+    }
 
     // once all work has been done, bootstrap should have resolved
     if (bootstrap_promise->State() == Promise::kRejected) {
       auto bootstrap_error = bootstrap_promise->Result().As<Object>();
       FatalException(env->isolate(), bootstrap_error,
           Exception::CreateMessage(env->isolate(), bootstrap_error));
-    }
-    else {
-      CHECK_EQ(bootstrap_promise->State(), Promise::kFulfilled);
     }
   } else {
     f->Call(Null(env->isolate()), 1, &arg);

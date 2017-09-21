@@ -3805,6 +3805,9 @@ void LoadEnvironment(Environment* env) {
       FatalException(env->isolate(), bootstrap_error,
           Exception::CreateMessage(env->isolate(), bootstrap_error));
     }
+    else {
+      CHECK_EQ(bootstrap_promise->State(), Promise::kFulfilled);
+    }
   } else {
     f->Call(Null(env->isolate()), 1, &arg);
   }

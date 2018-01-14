@@ -12,10 +12,16 @@
 namespace node {
 namespace loader {
 
+struct PackageJson {
+  bool exists;
+  bool has_main;
+  std::string main;
+  bool esm;
+};
+
 v8::Maybe<url::URL> Resolve(Environment* env,
                             const std::string& specifier,
-                            const url::URL& base,
-                            bool read_pkg_json = false);
+                            const url::URL& base);
 
 class ModuleWrap : public BaseObject {
  public:

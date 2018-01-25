@@ -151,7 +151,10 @@ import Module from 'module';
 const builtins = Module.builtinModules;
 const JS_EXTENSIONS = new Set(['.js', '.mjs']);
 
-export function resolve(specifier, parentModuleURL/*, defaultResolve */) {
+const baseURL = new url.URL('file://');
+baseURL.pathname = process.cwd() + '/';
+
+export function resolve(specifier, parentModuleURL = baseURL, defaultResolve) {
   if (builtins.includes(specifier)) {
     return {
       url: specifier,

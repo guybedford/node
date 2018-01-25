@@ -171,6 +171,10 @@ extern bool config_preserve_symlinks;
 // that is used by lib/module.js
 extern bool config_experimental_modules;
 
+// Set in node.cc by ParseArgs when --format= is used.
+// Used to specify the module type (esm or cjs) of the entry point.
+extern std::string config_main_format;
+
 // Set in node.cc by ParseArgs when --loader is used.
 // Used in node_config.cc to set a constant on process.binding('config')
 // that is used by lib/internal/bootstrap_node.js

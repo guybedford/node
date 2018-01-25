@@ -13,7 +13,12 @@ parserOptions:
   sourceType: script
 
 overrides:
-  - files: ["doc/api/esm.md", "*.mjs", "test/es-module/test-esm-example-loader.js"]
+  - files: [
+      "doc/api/esm.md",
+      "*.mjs",
+      "test/es-module/test-esm-example-loader.js",
+      "test/es-module/test-esm-main-format.js"
+    ]
     parserOptions:
       sourceType: module
 

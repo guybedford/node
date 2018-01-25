@@ -245,6 +245,10 @@ bool config_experimental_modules = false;
 // that is used by lib/internal/bootstrap_node.js
 std::string config_userland_loader;  // NOLINT(runtime/string)
 
+// Set in node.cc by ParseArgs when --mode= is used.
+// Used to specify the module type (esm or cjs) of the entry point.
+std::string config_main_format;  // NOLINT(runtime/string)
+
 // Set by ParseArgs when --pending-deprecation or NODE_PENDING_DEPRECATION
 // is used.
 bool config_pending_deprecation = false;
@@ -3544,6 +3548,8 @@ static void PrintHelp() {
          "  --preserve-symlinks        preserve symbolic links when resolving\n"
          "  --experimental-modules     experimental ES Module support\n"
          "                             and caching modules\n"
+         "  --format esm|commonjs      specify the main entry point module\n"
+         "                             format for --experimental-modules\n"
 #endif
          "\n"
          "Environment variables:\n"
@@ -3624,6 +3630,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--expose-http2",   // keep as a non-op through v9.x
     "--experimental-modules",
     "--loader",
+    "--format",
     "--trace-warnings",
     "--redirect-warnings",
     "--trace-sync-io",
@@ -3803,6 +3810,21 @@ static void ParseArgs(int* argc,
       }
       args_consumed += 1;
       config_userland_loader = module;
+    } else if (strncmp(arg, "--format=", 9) == 0) {
+      if (!config_experimental_modules) {
+        fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+            argv[0], arg);
+        exit(9);
+      }
+      config_main_format = arg + 9;
+    } else if (strcmp(arg, "--format") == 0) {
+      const char* main_format = argv[index + 1];
+      if (main_format == nullptr) {
+        fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+        exit(9);
+      }
+      args_consumed += 1;
+      config_main_format = main_format;
     } else if (strcmp(arg, "--prof-process") == 0) {
       prof_process = true;
       short_circuit = true;

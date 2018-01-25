@@ -41,6 +41,54 @@ const notFoundRE = /^Error: Cannot find module/m;
   });
 });
 
+// test esm syntax
+[
+  'syntax/esm-syntax.js'
+].forEach(function(file) {
+  file = fixtures.path(file);
+
+  // loop each possible option, `-c` or `--check`
+  syntaxArgs.forEach(function(args) {
+    const _args = args.concat(file);
+
+    const cmd = [node, '--experimental-modules', '--format=esm',
+                 ..._args].join(' ');
+    exec(cmd, common.mustCall((err, stdout, stderr) => {
+      assert.ifError(err);
+      assert.strictEqual(stdout, '');
+      assert.strictEqual(stderr, '');
+    }));
+  });
+});
+
+// test bad esm syntax
+[
+  'syntax/esm-syntax-bad.js'
+].forEach(function(file) {
+  file = fixtures.path(file);
+
+  // loop each possible option, `-c` or `--check`
+  syntaxArgs.forEach(function(args) {
+    const _args = args.concat(file);
+
+    const cmd = [node, '--experimental-modules', '--format=esm',
+                 ..._args].join(' ');
+    exec(cmd, common.mustCall((err, stdout, stderr) => {
+      assert.strictEqual(err instanceof Error, true);
+      assert.strictEqual(err.code, 1);
+
+      // no stdout should be produced
+      assert.strictEqual(stdout, '');
+
+      // stderr should have a syntax error message
+      assert(syntaxErrorRE.test(stderr), `${syntaxErrorRE} === ${stderr}`);
+
+      // stderr should include the filename
+      assert(stderr.startsWith(file), `${stderr} starts with ${file}`);
+    }));
+  });
+});
+
 // test bad syntax with and without shebang
 [
   'syntax/bad_syntax.js',

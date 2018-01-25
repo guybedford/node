@@ -82,6 +82,16 @@ static void InitConfig(Local<Object> target,
     }
   }
 
+  if (!config_main_format.empty()) {
+    target->DefineOwnProperty(
+      context,
+      FIXED_ONE_BYTE_STRING(isolate, "mainFormat"),
+      String::NewFromUtf8(isolate,
+                          config_main_format.c_str(),
+                          v8::NewStringType::kNormal).ToLocalChecked(),
+      ReadOnly).FromJust();
+  }
+
   if (config_pending_deprecation)
     READONLY_BOOLEAN_PROPERTY("pendingDeprecation");
 

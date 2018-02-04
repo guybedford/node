@@ -12,10 +12,17 @@
 namespace node {
 namespace loader {
 
+struct PackageConfig {
+  bool exists;
+  bool has_main;
+  std::string main;
+  bool esm;
+};
+
 v8::Maybe<url::URL> Resolve(Environment* env,
                             const std::string& specifier,
                             const url::URL& base,
-                            bool read_pkg_json = false);
+                            bool check_pjson_main = false);
 
 class ModuleWrap : public BaseObject {
  public:

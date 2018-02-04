@@ -85,6 +85,16 @@ static void InitConfig(Local<Object> target,
   if (config_experimental_vm_modules)
     READONLY_BOOLEAN_PROPERTY("experimentalVMModules");
 
+  if (!config_main_mode.empty()) {
+    target->DefineOwnProperty(
+      context,
+      FIXED_ONE_BYTE_STRING(isolate, "mainMode"),
+      String::NewFromUtf8(isolate,
+                          config_main_mode.c_str(),
+                          v8::NewStringType::kNormal).ToLocalChecked(),
+      ReadOnly).FromJust();
+  }
+
   if (config_pending_deprecation)
     READONLY_BOOLEAN_PROPERTY("pendingDeprecation");
 

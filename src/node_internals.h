@@ -177,6 +177,10 @@ extern bool config_experimental_modules;
 // that is used by lib/vm.js
 extern bool config_experimental_vm_modules;
 
+// Set in node.cc by ParseArgs when --mode= is used.
+// Used to specify the module type (esm or cjs) of the entry point.
+extern std::string config_main_mode;
+
 // Set in node.cc by ParseArgs when --loader is used.
 // Used in node_config.cc to set a constant on process.binding('config')
 // that is used by lib/internal/bootstrap_node.js

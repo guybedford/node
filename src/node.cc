@@ -250,6 +250,10 @@ bool config_experimental_vm_modules = false;
 // that is used by lib/internal/bootstrap_node.js
 std::string config_userland_loader;  // NOLINT(runtime/string)
 
+// Set in node.cc by ParseArgs when --mode= is used.
+// Used to specify the module type (esm or cjs) of the entry point.
+std::string config_main_mode;  // NOLINT(runtime/string)
+
 // Set by ParseArgs when --pending-deprecation or NODE_PENDING_DEPRECATION
 // is used.
 bool config_pending_deprecation = false;
@@ -3433,6 +3437,8 @@ static void PrintHelp() {
          "                             and caching modules\n"
          "  --experimental-vm-modules  experimental ES Module support\n"
          "                             in vm module\n"
+         "  --mode esm                 specify the entry package mode\n"
+         "                             mode for --experimental-modules\n"
 #endif
          "\n"
          "Environment variables:\n"
@@ -3514,6 +3520,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--experimental-modules",
     "--experimental-vm-modules",
     "--loader",
+    "--mode",
     "--trace-warnings",
     "--redirect-warnings",
     "--trace-sync-io",
@@ -3701,6 +3708,31 @@ static void ParseArgs(int* argc,
       }
       args_consumed += 1;
       config_userland_loader = module;
+    } else if (strncmp(arg, "--mode=", 7) == 0) {
+      if (!config_experimental_modules) {
+        fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+            argv[0], arg);
+        exit(9);
+      }
+      config_main_mode = arg + 7;
+      if (config_main_mode != "esm") {
+        fprintf(stderr, "%s: \"%s\" is not a valid module mode\n", argv[0],
+            config_main_mode.c_str());
+        exit(9);
+      }
+    } else if (strcmp(arg, "--mode") == 0) {
+      const char* main_mode = argv[index + 1];
+      if (main_mode == nullptr) {
+        fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+        exit(9);
+      }
+      args_consumed += 1;
+      config_main_mode = main_mode;
+      if (config_main_mode != "esm") {
+        fprintf(stderr, "%s: \"%s\" is not a valid module mode\n", argv[0],
+            main_mode);
+        exit(9);
+      }
     } else if (strcmp(arg, "--prof-process") == 0) {
       prof_process = true;
       short_circuit = true;

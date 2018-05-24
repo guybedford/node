@@ -27,12 +27,28 @@ fs.readFile(url, common.mustCall((err, data) => {
   assert(Buffer.isBuffer(data));
 }));
 
+// Check that we can pass in a URL string successfully
+fs.readFile(url.href, common.mustCall((err, data) => {
+  assert.ifError(err);
+  assert(Buffer.isBuffer(data));
+}));
+
 // Check that using a non file:// URL reports an error
 const httpUrl = new URL('http://example.org');
 
 common.expectsError(
   () => {
     fs.readFile(httpUrl, common.mustNotCall());
+  },
+  {
+    code: 'ERR_INVALID_URL_SCHEME',
+    type: TypeError,
+    message: 'The URL must be of scheme file'
+  });
+
+common.expectsError(
+  () => {
+    fs.readFile(httpUrl.href, common.mustNotCall());
   },
   {
     code: 'ERR_INVALID_URL_SCHEME',
@@ -54,10 +70,32 @@ if (common.isWindows) {
         message: 'File URL path must not include encoded \\ or / characters'
       }
     );
+
+    common.expectsError(
+      () => {
+        fs.readFile(new URL(`file:///c:/tmp/${i}`).href, common.mustNotCall());
+      },
+      {
+        code: 'ERR_INVALID_FILE_URL_PATH',
+        type: TypeError,
+        message: 'File URL path must not include encoded \\ or / characters'
+      }
+    );
   });
   common.expectsError(
     () => {
       fs.readFile(new URL('file:///c:/tmp/%00test'), common.mustNotCall());
+    },
+    {
+      code: 'ERR_INVALID_ARG_VALUE',
+      type: TypeError,
+      message: 'The argument \'path\' must be a string or Uint8Array without ' +
+               'null bytes. Received \'c:/tmp/\\u0000test\''
+    }
+  );
+  common.expectsError(
+    () => {
+      fs.readFile(new URL('file:///c:/tmp/%00test').href, common.mustNotCall());
     },
     {
       code: 'ERR_INVALID_ARG_VALUE',
@@ -78,10 +116,29 @@ if (common.isWindows) {
         type: TypeError,
         message: 'File URL path must not include encoded / characters'
       });
+    common.expectsError(
+      () => {
+        fs.readFile(new URL(`file:///c:/tmp/${i}`).href, common.mustNotCall());
+      },
+      {
+        code: 'ERR_INVALID_FILE_URL_PATH',
+        type: TypeError,
+        message: 'File URL path must not include encoded / characters'
+      });
   });
   common.expectsError(
     () => {
       fs.readFile(new URL('file://hostname/a/b/c'), common.mustNotCall());
+    },
+    {
+      code: 'ERR_INVALID_FILE_URL_HOST',
+      type: TypeError,
+      message: `File URL host must be "localhost" or empty on ${os.platform()}`
+    }
+  );
+  common.expectsError(
+    () => {
+      fs.readFile(new URL('file://hostname/a/b/c').href, common.mustNotCall());
     },
     {
       code: 'ERR_INVALID_FILE_URL_HOST',
@@ -100,4 +157,61 @@ if (common.isWindows) {
                'null bytes. Received \'/tmp/\\u0000test\''
     }
   );
+  common.expectsError(
+    () => {
+      fs.readFile(new URL('file:///tmp/%00test').href, common.mustNotCall());
+    },
+    {
+      code: 'ERR_INVALID_ARG_VALUE',
+      type: TypeError,
+      message: 'The argument \'path\' must be a string or Uint8Array without ' +
+               'null bytes. Received \'/tmp/\\u0000test\''
+    }
+  );
 }
+
+common.expectsError(
+  () => {
+    fs.readFile(new URL('file:///tmp\\test').href, common.mustNotCall());
+  },
+  {
+    code: 'ERR_INVALID_FILE_URL_PATH',
+    type: TypeError,
+    message: 'must be a fully-valid normalized file URL string'
+  }
+);
+
+common.expectsError(
+  () => {
+    fs.readFile(new URL('file:///tmp/test/../test').href, common.mustNotCall());
+  },
+  {
+    code: 'ERR_INVALID_FILE_URL_PATH',
+    type: TypeError,
+    message: 'must be a fully-valid normalized file URL string'
+  }
+);
+
+common.expectsError(
+  () => {
+    fs.readFile(new URL('file://tmp/test').href, common.mustNotCall());
+  },
+  {
+    code: 'ERR_INVALID_FILE_URL_PATH',
+    type: TypeError,
+    message: 'must be a fully-valid normalized file URL string'
+  }
+);
+
+common.expectsError(
+  () => {
+    fs.readFile(new URL('file:x').href, common.mustNotCall());
+  },
+  {
+    code: 'ERR_INVALID_FILE_URL_PATH',
+    type: TypeError,
+    message: 'must be a fully-valid normalized file URL string'
+  }
+);
+
+

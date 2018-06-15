@@ -202,6 +202,10 @@ extern bool config_experimental_worker;
 // that is used by lib/repl.js.
 extern bool config_experimental_repl_await;
 
+// Set in node.cc by ParseArgs when --module is used.
+// Used to indicate a module entry point
+extern bool config_module;
+
 // Set in node.cc by ParseArgs when --loader is used.
 // Used in node_config.cc to set a constant on process.binding('config')
 // that is used by lib/internal/bootstrap/node.js

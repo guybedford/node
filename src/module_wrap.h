@@ -12,15 +12,19 @@
 namespace node {
 namespace loader {
 
-enum PackageMainCheck : bool {
-    CheckMain = true,
-    IgnoreMain = false
+struct LegacyMain {
+  enum Bool { Yes, No };
 };
 
-v8::Maybe<url::URL> Resolve(Environment* env,
-                            const std::string& specifier,
-                            const url::URL& base,
-                            PackageMainCheck read_pkg_json = CheckMain);
+struct ModuleResolution {
+  url::URL url;
+  LegacyMain::Bool legacy;
+};
+
+v8::Maybe<ModuleResolution> Resolve(Environment* env,
+                                    const std::string& specifier,
+                                    const url::URL& base,
+                                    bool legacy_mode);
 
 class ModuleWrap : public BaseObject {
  public:

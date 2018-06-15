@@ -86,6 +86,9 @@ static void Initialize(Local<Object> target,
                               v8::NewStringType::kNormal).ToLocalChecked(),
           ReadOnly).FromJust();
     }
+
+    if (config_module)
+      READONLY_BOOLEAN_PROPERTY("module");
   }
 
   if (config_experimental_vm_modules)

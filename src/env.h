@@ -74,11 +74,17 @@ struct HasMain {
   enum Bool { Yes, No };
 };
 
+struct HasModule {
+  enum Bool { Yes, No };
+};
+
 struct PackageConfig {
   const Exists::Bool exists;
   const IsValid::Bool is_valid;
   const HasMain::Bool has_main;
+  const HasModule::Bool has_module;
   const std::string main;
+  const std::string module;
 };
 }  // namespace loader
 
@@ -139,6 +145,7 @@ struct PackageConfig {
   V(oncertcb_string, "oncertcb")                                              \
   V(code_string, "code")                                                      \
   V(cwd_string, "cwd")                                                        \
+  V(default_string, "default")                                                \
   V(dest_string, "dest")                                                      \
   V(destroyed_string, "destroyed")                                            \
   V(detached_string, "detached")                                              \
@@ -192,6 +199,7 @@ struct PackageConfig {
   V(issuer_string, "issuer")                                                  \
   V(issuercert_string, "issuerCertificate")                                   \
   V(kill_signal_string, "killSignal")                                         \
+  V(legacy_string, "legacy")                                                  \
   V(mac_string, "mac")                                                        \
   V(main_string, "main")                                                      \
   V(max_buffer_string, "maxBuffer")                                           \

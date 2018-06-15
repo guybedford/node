@@ -261,6 +261,10 @@ bool config_experimental_repl_await = false;
 // that is used by lib/internal/bootstrap/node.js
 std::string config_userland_loader;  // NOLINT(runtime/string)
 
+// Set in node.cc by ParseArgs when --module is used.
+// Used to indicate a module entry point
+bool config_module = false;
+
 // Set by ParseArgs when --pending-deprecation or NODE_PENDING_DEPRECATION
 // is used.
 bool config_pending_deprecation = false;
@@ -2458,7 +2462,7 @@ static void PrintHelp() {
 #endif  // NODE_FIPS_MODE && NODE_FIPS_MODE
 #if defined(NODE_HAVE_I18N_SUPPORT)
          "  --experimental-modules     experimental ES Module support\n"
-         "                             and caching modules\n"
+         "                             (then use the -m or --module flag)\n"
 #endif  // defined(NODE_HAVE_I18N_SUPPORT)
          "  --experimental-repl-await  experimental await keyword support\n"
          "                             in REPL\n"
@@ -2638,6 +2642,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--inspect-brk",
     "--inspect-port",
     "--loader",
+    "--module",
     "--napi-modules",
     "--no-deprecation",
     "--no-force-async-hooks-checks",
@@ -2659,6 +2664,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--use-openssl-ca",
     "--v8-pool-size",
     "--zero-fill-buffers",
+    "-m",
     "-r",
 
     // V8 options (define with '_', which allows '-' or '_')
@@ -2846,6 +2852,14 @@ static void ParseArgs(int* argc,
       }
       args_consumed += 1;
       config_userland_loader = module;
+    } else if (strcmp(arg, "--module") == 0 ||
+               strcmp(arg, "-m") == 0) {
+      if (!config_experimental_modules) {
+        fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+            argv[0], arg);
+        exit(9);
+      }
+      config_module = true;
     } else if (strcmp(arg, "--prof-process") == 0) {
       prof_process = true;
       short_circuit = true;

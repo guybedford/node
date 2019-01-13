@@ -223,22 +223,28 @@ PACKAGE_RESOLVE(_packageSpecifier_, _parentURL_)
 > 1. Throw a _Module Not Found_ error.
 
 PACKAGE_MAIN_RESOLVE(_packageURL_, _pjson_)
-> 1. Let _pjsonURL_ be the URL of the file _"package.json"_ within the parent
->    path _packageURL_.
-> 1. If **HAS_ESM_PROPERTIES**(_pjson_) is **false**, then
->    1. Let _mainURL_ be the result applying the legacy
->       **LOAD_AS_DIRECTORY** CommonJS resolver to _packageURL_, throwing a
->       _Module Not Found_ error for no resolution.
->    1. Return _mainURL_.
-> 1. TODO: ESM main handling.
-> 1. Throw a _Module Not Found_ error.
+> 1. If _pjson_ is **null**, then
+>    1. Throw a _Module Not Found_ error.
+> 1. If _pjson.main_ is a String, then
+>    1. Let _resolvedMain_ be the concatenation of _packageURL_, "/", and
+>       _"pjson.main"_.
+>    1. If the file at _resolvedMain_ exists, then
+>       1. Return _resolvedMain_.
+> 1. If _pjson.mode_ is equal to _"esm"_, then
+>    1. Throw a _Module Not Found_ error.
+> 1. Let _legacyMainURL_ be the result applying the legacy
+>    **LOAD_AS_DIRECTORY** CommonJS resolver to _packageURL_, throwing a
+>    _Module Not Found_ error for no resolution.
+> 1. If _legacyMainURL_ does not end in _".js"_ then,
+>    1. Throw an _Unsupported File Extension_ error.
+> 1. Return _legacyMainURL_.
 
 **ESM_FORMAT(_url_, _isMain_)**
 > 1. Assert: _url_ corresponds to an existing file.
 > 1. Let _pjson_ be the result of **READ_PACKAGE_BOUNDARY**(_url_).
 > 1. If _pjson_ is **null** and _isMain_ is **true**, then
 >    1. Return _"legacy"_.
-> 1. If **HAS_ESM_PROPERTIES**(_pjson_) is **true**, then
+> 1. If _pjson.mode_ exists and is _"esm"_, then
 >    1. If _url_ does not end in _".js"_ or _".mjs"_, then
 >       1. Throw an _Unsupported File Extension_ error.
 >    1. Return _"esm"_.
@@ -264,9 +270,6 @@ READ_PACKAGE_JSON(_packageURL_)
 > 1. If the file at _packageURL_ does not parse as valid JSON, then
 >    1. Throw an _Invalid Package Configuration_ error.
 > 1. Return the parsed JSON source of the file at _url_.
-
-HAS_ESM_PROPERTIES(_pjson_)
-> Note: To be specified.
 
 [Node.js EP for ES Modules]: https://github.com/nodejs/node-eps/blob/master/002-es-modules.md
 [`module.createRequireFromPath()`]: modules.html#modules_module_createrequirefrompath_filename

@@ -82,6 +82,9 @@ struct PackageConfig {
   struct HasMain {
     enum Bool { No, Yes };
   };
+  struct HasExports {
+    enum Bool { No, Yes };
+  };
   struct IsESM {
     enum Bool { No, Yes };
   };
@@ -89,6 +92,8 @@ struct PackageConfig {
   const IsValid::Bool is_valid;
   const HasMain::Bool has_main;
   const std::string main;
+  const HasExports::Bool has_exports;
+  const v8::CopyablePersistentTraits<v8::Value>::CopyablePersistent exports;
   const IsESM::Bool esm;
 };
 }  // namespace loader

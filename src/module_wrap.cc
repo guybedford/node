@@ -592,21 +592,24 @@ Maybe<const PackageConfig*> GetPackageConfig(Environment* env,
     }
   }
 
-  HasExports::Bool has_exports = HasExports::No;
   Local<Value> exports_v;
-  Persistent<Value> exports;
   if (pkg_json->Get(env->context(),
       env->exports_string()).ToLocal(&exports_v) &&
       (exports_v->IsObject() || exports_v->IsString() ||
       exports_v->IsBoolean())) {
+    Persistent<Value> exports;
     // esm = IsESM::Yes;
-    has_exports = HasExports::Yes;
     exports.Reset(env->isolate(), exports_v);
+
+    auto entry = env->package_json_cache.emplace(path,
+        PackageConfig { Exists::Yes, IsValid::Yes, has_main, main_std,
+                        HasExports::Yes, exports, esm });
+    return Just(&entry.first->second);
   }
 
   auto entry = env->package_json_cache.emplace(path,
       PackageConfig { Exists::Yes, IsValid::Yes, has_main, main_std,
-                      has_exports, exports, esm });
+                      HasExports::No, Persistent<Value>(), esm });
   return Just(&entry.first->second);
 }
 
@@ -628,7 +631,7 @@ Maybe<const PackageConfig*> GetPackageBoundaryConfig(Environment* env,
     if (pjson_url.path() == last_pjson_url.path()) {
       auto entry = env->package_json_cache.emplace(pjson_url.ToFilePath(),
           PackageConfig { Exists::No, IsValid::Yes, HasMain::No, "",
-                          HasExports::No, Persistent<Value>(), IsESM::Yes });
+                          HasExports::No, Persistent<Value>(), IsESM::No });
       return Just(&entry.first->second);
     }
   }
@@ -707,7 +710,7 @@ Maybe<ModuleResolution> FinalizeResolution(Environment* env,
   if (pcfg.IsNothing()) return Nothing<ModuleResolution>();
 
   if (pcfg.FromJust()->exists == Exists::No) {
-    return Just(ModuleResolution { resolved, is_main });
+    return Just(ModuleResolution { resolved, true });
   }
 
   return Just(ModuleResolution {
@@ -719,7 +722,8 @@ Maybe<ModuleResolution> PackageMainResolve(Environment* env,
                                            const PackageConfig& pcfg,
                                            const URL& base) {
   if (pcfg.exists == Exists::No || (
-      pcfg.esm == IsESM::Yes && pcfg.has_main == HasMain::No)) {
+      pcfg.esm == IsESM::Yes && pcfg.has_main == HasMain::No &&
+      pcfg.has_exports == HasExports::No)) {
     std::string msg = "Cannot find main entry point for '" +
         URL(".", pjson_url).ToFilePath() + "' imported from " +
         base.ToFilePath();
@@ -837,7 +841,9 @@ Maybe<ModuleResolution> PackageResolve(Environment* env,
     node::THROW_ERR_INVALID_MODULE_SPECIFIER(env, msg.c_str());
     return Nothing<ModuleResolution>();
   }
+  bool scope = false;
   if (specifier[0] == '@') {
+    scope = true;
     sep_index = specifier.find('/', sep_index + 1);
   }
   std::string pkg_name = specifier.substr(0,
@@ -847,7 +853,7 @@ Maybe<ModuleResolution> PackageResolve(Environment* env,
       sep_index == specifier.length() - 1)) {
     pkg_subpath = "";
   } else {
-    pkg_subpath = specifier.substr(sep_index);
+    pkg_subpath = "." + specifier.substr(sep_index);
   }
   URL pjson_url("./node_modules/" + pkg_name + "/package.json", &base);
   std::string pjson_path = pjson_url.ToFilePath();
@@ -857,8 +863,9 @@ Maybe<ModuleResolution> PackageResolve(Environment* env,
         CheckDescriptorAtPath(pjson_path.substr(0, pjson_path.length() - 13));
     if (check != DIRECTORY) {
       last_path = pjson_path;
-      pjson_url =
-          URL("../node_modules/" + pkg_name + "/package.json", &pjson_url);
+      pjson_url = URL((scope ?
+          "../../../../node_modules/" : "../../../node_modules/") +
+          pkg_name + "/package.json", &pjson_url);
       pjson_path = pjson_url.ToFilePath();
       continue;
     }
@@ -880,7 +887,7 @@ Maybe<ModuleResolution> PackageResolve(Environment* env,
     }
     CHECK(false);
     // Cross-platform root check.
-  } while (pjson_url.path().length() == last_path.length());
+  } while (pjson_url.path().length() != last_path.length());
 
   std::string msg = "Cannot find package '" + pkg_name +
       "' imported from " + base.ToFilePath();

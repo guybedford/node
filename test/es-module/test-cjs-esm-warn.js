@@ -17,8 +17,8 @@ child.on('close', common.mustCall((code, signal) => {
   assert.strictEqual(code, 0);
   assert.strictEqual(signal, null);
   assert.strictEqual(stderr, `(node:${child.pid}) Warning: require() of .js ` +
-      'files inside of a package with "type": "module" in its package.json ' +
-      'is not supported under --experimental-modules\nRather use import to ' +
-      'load this module, or if you are the author you may want to use the ' +
-      '.cjs extension for this file.\n');
+      `file ${entry} is not supported as it is an ES module due to having ` +
+      '"type": "module" in its package.json file.\nRather use import to load ' +
+      'this module, or if you are the author you may want to use the .cjs ' +
+      'extension for this file.\n');
 }));

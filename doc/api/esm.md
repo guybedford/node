@@ -260,6 +260,79 @@ that would only be supported in ES module-supporting versions of Node.js (and
 other runtimes). New packages could be published containing only ES module
 sources, and would be compatible only with ES module-supporting runtimes.
 
+### Package Default
+
+The `"default"` field in the package.json can be considered as the new version
+of the `"main"` field.
+
+When set, it must start with `"./"`, and reference an exact file name within the
+package - no extension or index searching will apply.
+
+If no `"default"` field is specified, the traditional `"main"` will be used.
+
+When setting the `"default"`, packages are automatically encapsulated and do not
+expose any subpaths. Instead subpaths should be manually configured with the
+`"exports"` field.
+
+<!-- eslint-skip -->
+```js
+// ./node_modules/pkg/package.json
+{
+  "type": "module",
+  "default": "./main.js"
+}
+```
+
+The default field can also be set to **false** to indicate no main entry point
+is provided by the package.
+
+#### Conditional Defaults
+
+The primary benefit of the `"default"` field over the `"main"` field is that the
+`"default"` field supports a conditional environment mapping object.
+
+This allows defining a different entry point dependenting on the environment,
+for example:
+
+<!-- eslint-skip -->
+```js
+// ./node_modules/pkg/package.json
+{
+  "type": "module",
+  "main": "./index.cjs",
+  "default": {
+    "require": "./index.cjs",
+    "node": "./main.js",
+    "browser": "./main-browser.js"
+  }
+}
+```
+
+Defines a package which loads `index.cjs` for legacy Node.js and CommonJS
+importers, `main.js` for modern ES module importers, and `main-browser.js`
+when using browser tooling.
+
+Node.js natively provides support for the `"require"` and `"node"` conditions,
+matching `"require"` when the importer is CommonJS, and `"node"` if the
+`"require"` condition is not provided or otherwise.
+
+Node.js provides no internal support for the `"browser"` condition but the
+expectation is that browser tooling can utilize this to support the browser
+as well as custom conditions for other environments.
+
+Other environments can define eg `"electron"` or `"react-native"` conditions
+to handle their own custom entry points.
+
+#### Dual Package Instance Hazard
+
+Supporting separate entry points for `require()` and `import()`
+_within the same runtime_ is an instancing hazard in that it is as if there
+are two versions of the same package in the application dependening on whether
+it was imported or required. Opting into this hazard by using the `require()`
+field should be done only when absolutely necessary and the package _does not
+behave as a singleton storing any state that may get out-of-sync for
+consumers_.
+
 ### Package Exports
 
 By default, all subpaths from a package can be imported (`import 'pkg/x.js'`).
@@ -313,33 +386,6 @@ If a package has no exports, setting `"exports": false` can be used instead of
 `"exports": {}` to indicate the package does not intend for submodules to be
 exposed.
 
-Exports can also be used to map the main entry point of a package:
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": {
-    ".": "./main.js"
-  }
-}
-```
-
-where the "." indicates loading the package without any subpath. Exports will
-always override any existing `"main"` value for both CommonJS and
-ES module packages.
-
-For packages with only a main entry point, an `"exports"` value of just
-a string is also supported:
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": "./main.js"
-}
-```
-
 Any invalid exports entries will be ignored. This includes exports not
 starting with `"./"` or a missing trailing `"/"` for directory exports.
 
@@ -357,6 +403,29 @@ in order to be forward-compatible with fallback workflows in future:
 
 Since `"not:valid"` is not a supported target, `"./submodule.js"` is used
 instead as the fallback, as if it were the only target.
+
+#### Conditional Exports
+
+Just like the `"default"` field exports targets support conditional environment
+mappings by setting the target to an object:
+
+<!-- eslint-skip -->
+```js
+// ./node_modules/es-module-package/package.json
+{
+  "exports": {
+    "./submodule": {
+      "node": "./src/submodule.js",
+      "browser": "./src/submodule-browser.js"
+    }
+  }
+}
+```
+
+Node.js will only match the `"node"` condition if found, also supporting the
+`"require"` condition for CommonJS importers (although this must be used only
+when absolutely necessary
+[due to the instancing hazard](#esm_dual_package_instance_hazard)).
 
 ## <code>import</code> Specifiers
 
@@ -806,6 +875,8 @@ of these top-level routines unless stated otherwise.
 
 _isMain_ is **true** when resolving the Node.js application entry point.
 
+_defaultEnv_ is the conditional environment name priority array, `["node"]`.
+
 <details>
 <summary>Resolver algorithm specification</summary>
 
@@ -884,15 +955,11 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 
 > 1. If _pjson_ is **null**, then
 >    1. Throw a _Module Not Found_ error.
-> 1. If _pjson.exports_ is not **null** or **undefined**, then
->    1. If _pjson.exports_ is a String or Array, then
->       1. Return _PACKAGE_EXPORTS_TARGET_RESOLVE(packageURL, pjson.exports,
->          "")_.
->    1. If _pjson.exports is an Object, then
->       1. If _pjson.exports_ contains a _"."_ property, then
->          1. Let _mainExport_ be the _"."_ property in _pjson.exports_.
->          1. Return _PACKAGE_EXPORTS_TARGET_RESOLVE(packageURL, mainExport,
->             "")_.
+> 1. If _pjson.default_ is not **null** or **undefined**, then
+>    1. If _pjson.default_ is a String, Object or Array, then
+>       1. Return **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_,
+>          _pjson.default_, _""_, _defaultEnv_)_.
+>    1. Otherwise, throw a _Module Not Found_ error.
 > 1. If _pjson.main_ is a String, then
 >    1. Let _resolvedMain_ be the URL resolution of _packageURL_, "/", and
 >       _pjson.main_.
@@ -912,7 +979,7 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 >    1. If _packagePath_ is a key of _exports_, then
 >       1. Let _target_ be the value of _exports\[packagePath\]_.
 >       1. Return **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_,
->          _""_).
+>          _""_, _defaultEnv_).
 >    1. Let _directoryKeys_ be the list of keys of _exports_ ending in
 >       _"/"_, sorted by length descending.
 >    1. For each key _directory_ in _directoryKeys_, do
@@ -921,10 +988,10 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 >          1. Let _subpath_ be the substring of _target_ starting at the index
 >             of the length of _directory_.
 >          1. Return **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_,
->             _subpath_).
+>             _subpath_, _defaultEnv_).
 > 1. Throw a _Module Not Found_ error.
 
-**PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_, _subpath_)
+**PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_, _subpath_, _env_)
 
 > 1. If _target_ is a String, then
 >    1. If _target_ does not start with _"./"_, throw a _Module Not Found_
@@ -940,12 +1007,21 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 >          _subpath_ and _resolvedTarget_.
 >       1. If _resolved_ is contained in _resolvedTarget_, then
 >          1. Return _resolved_.
+> 1. Otherwise, if _target_ is a non-null Object, then
+>    1. If _target_ has an object key matching one of the names in _env_, then
+>       1. Let _targetValue_ be the corresponding value of the first object key
+>          of _target_ in _env_.
+>       1. If _targetValue_ is a String or Array, then
+>          1. Let _resolved_ be the result of **PACKAGE_EXPORTS_TARGET_RESOLVE**
+>             (_packageURL_, _targetValue_, _subpath_, _[]_).
+>          1. Assert: _resolved_ is a String.
+>          1. Return _resolved_.
 > 1. Otherwise, if _target_ is an Array, then
 >    1. For each item _targetValue_ in _target_, do
->       1. If _targetValue_ is not a String, continue the loop.
+>       1. If _targetValue_ is an Array, continue the loop.
 >       1. Let _resolved_ be the result of
 >          **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _targetValue_,
->          _subpath_), continuing the loop on abrupt completion.
+>          _subpath_, _env_), continuing the loop on abrupt completion.
 >       1. Assert: _resolved_ is a String.
 >       1. Return _resolved_.
 > 1. Throw a _Module Not Found_ error.

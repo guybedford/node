@@ -12,6 +12,7 @@
 #include <sys/stat.h>  // S_IFDIR
 
 #include <algorithm>
+
 #include <climits>  // PATH_MAX
 
 namespace node {

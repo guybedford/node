@@ -67,6 +67,9 @@ struct UResourceBundle {
     char *fVersion;
     UResourceDataEntry *fTopLevelData; /* for getting the valid locale */
     char *fResPath; /* full path to the resource: "zh_TW/CollationElements/Sequence" */
+    // TODO(ICU-20769): Try to change the by-value fResData into a pointer,
+    // with the struct in only one place for each bundle.
+    // Also replace class ResourceDataValue.resData with a pResData pointer again.
     ResourceData fResData;
     char fResBuf[RES_BUFSIZE];
     int32_t fResPathLen;
@@ -154,7 +157,7 @@ U_CFUNC const char* ures_getName(const UResourceBundle* resB);
 U_CFUNC const char* ures_getPath(const UResourceBundle* resB);
 /**
  * If anything was in the RB cache, dump it to the screen.
- * @return TRUE if there was anything into the cache
+ * @return true if there was anything into the cache
  */
 U_CAPI UBool U_EXPORT2 ures_dumpCacheContents(void);
 #endif
@@ -215,7 +218,7 @@ ures_findSubResource(const UResourceBundle *resB,
  * @param isAvailable If non-null, pointer to fillin parameter that indicates whether the
  * requested locale was available. The locale is defined as 'available' if it physically
  * exists within the specified tree.
- * @param omitDefault if TRUE, omit keyword and value if default. 'de_DE\@collation=standard' -> 'de_DE'
+ * @param omitDefault if true, omit keyword and value if default. 'de_DE\@collation=standard' -> 'de_DE'
  * @param status error code
  * @return  the actual buffer size needed for the full locale.  If it's greater
  * than resultCapacity, the returned full name will be truncated and an error code will be returned.
@@ -267,11 +270,13 @@ ures_getByKeyWithFallback(const UResourceBundle *resB,
  * function can perform fallback on the sub-resources of the table.
  * @param resB              a resource
  * @param inKey             a key associated with the requested resource
+ * @param len               if not NULL, used to return the length of the string
  * @param status: fills in the outgoing error code
  *                could be <TT>U_MISSING_RESOURCE_ERROR</TT> if the key is not found
  *                could be a non-failing error
  *                e.g.: <TT>U_USING_FALLBACK_WARNING</TT>,<TT>U_USING_DEFAULT_WARNING </TT>
- * @return                  a pointer to a UResourceBundle struct. If fill in param was NULL, caller must delete it
+ * @return returns a pointer to a zero-terminated UChar array which lives in a
+ *         memory mapped/DLL file.
  */
 U_CAPI const UChar* U_EXPORT2
 ures_getStringByKeyWithFallback(const UResourceBundle *resB,
@@ -280,6 +285,11 @@ ures_getStringByKeyWithFallback(const UResourceBundle *resB,
                           UErrorCode *status);
 
 #ifdef __cplusplus
+
+U_CAPI void U_EXPORT2
+ures_getValueWithFallback(const UResourceBundle *bundle, const char *path,
+                          UResourceBundle *tempFillIn,
+                          icu::ResourceDataValue &value, UErrorCode &errorCode);
 
 U_CAPI void U_EXPORT2
 ures_getAllItemsWithFallback(const UResourceBundle *bundle, const char *path,

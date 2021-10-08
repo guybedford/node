@@ -2,7 +2,6 @@
 
 #include "async_wrap.h"
 #include "env-inl.h"
-#include "node_buffer.h"
 #include "node_errors.h"
 #include "stream_base-inl.h"
 #include "util-inl.h"
@@ -20,7 +19,6 @@ using v8::HandleScope;
 using v8::Int32;
 using v8::Local;
 using v8::Object;
-using v8::String;
 using v8::Value;
 
 
@@ -117,16 +115,15 @@ int JSStream::DoWrite(WriteWrap* w,
   HandleScope scope(env()->isolate());
   Context::Scope context_scope(env()->context());
 
-  Local<Array> bufs_arr = Array::New(env()->isolate(), count);
-  Local<Object> buf;
+  MaybeStackBuffer<Local<Value>, 16> bufs_arr(count);
   for (size_t i = 0; i < count; i++) {
-    buf = Buffer::Copy(env(), bufs[i].base, bufs[i].len).ToLocalChecked();
-    bufs_arr->Set(env()->context(), i, buf).Check();
+    bufs_arr[i] =
+        Buffer::Copy(env(), bufs[i].base, bufs[i].len).ToLocalChecked();
   }
 
   Local<Value> argv[] = {
     w->object(),
-    bufs_arr
+    Array::New(env()->isolate(), bufs_arr.out(), count)
   };
 
   TryCatchScope try_catch(env());
@@ -181,7 +178,7 @@ void JSStream::ReadBuffer(const FunctionCallbackInfo<Value>& args) {
 
     memcpy(buf.base, data, avail);
     data += avail;
-    len -= avail;
+    len -= static_cast<int>(avail);
     wrap->EmitRead(avail, buf);
   }
 }
@@ -202,11 +199,8 @@ void JSStream::Initialize(Local<Object> target,
   Environment* env = Environment::GetCurrent(context);
 
   Local<FunctionTemplate> t = env->NewFunctionTemplate(New);
-  Local<String> jsStreamString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "JSStream");
-  t->SetClassName(jsStreamString);
   t->InstanceTemplate()
-    ->SetInternalFieldCount(StreamBase::kStreamBaseFieldCount);
+    ->SetInternalFieldCount(StreamBase::kInternalFieldCount);
   t->Inherit(AsyncWrap::GetConstructorTemplate(env));
 
   env->SetProtoMethod(t, "finishWrite", Finish<WriteWrap>);
@@ -215,9 +209,7 @@ void JSStream::Initialize(Local<Object> target,
   env->SetProtoMethod(t, "emitEOF", EmitEOF);
 
   StreamBase::AddMethods(env, t);
-  target->Set(env->context(),
-              jsStreamString,
-              t->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "JSStream", t);
 }
 
 }  // namespace node

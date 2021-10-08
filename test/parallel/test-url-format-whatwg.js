@@ -6,7 +6,6 @@ if (!common.hasIntl)
 
 const assert = require('assert');
 const url = require('url');
-const URL = url.URL;
 
 const myURL = new URL('http://xn--lck1c3crb1723bpq4a.com/a?a=b#c');
 
@@ -27,8 +26,8 @@ assert.strictEqual(
       {
         code: 'ERR_INVALID_ARG_TYPE',
         name: 'TypeError',
-        message: 'The "options" argument must be of type Object. ' +
-                 `Received type ${typeof value}`
+        message: 'The "options" argument must be of type object.' +
+                 common.invalidArgTypeHelper(value)
       }
     );
   });

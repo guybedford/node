@@ -20,7 +20,7 @@ Data types
 
     The base libuv handle type.
 
-.. c:type:: uv_handle_type
+.. c:enum:: uv_handle_type
 
     The kind of the libuv handle.
 
@@ -104,7 +104,7 @@ Public members
 API
 ---
 
-.. c:function:: UV_HANDLE_TYPE_MAP(iter_macro)
+.. c:macro:: UV_HANDLE_TYPE_MAP(iter_macro)
 
     Macro that expands to a series of invocations of `iter_macro` for
     each of the handle types. `iter_macro` is invoked with two
@@ -190,8 +190,11 @@ just for some handle types.
     Gets or sets the size of the send buffer that the operating
     system uses for the socket.
 
-    If `*value` == 0, it will return the current send buffer size,
-    otherwise it will use `*value` to set the new send buffer size.
+    If `*value` == 0, then it will set `*value` to the current send buffer size.
+    If `*value` > 0 then it will use `*value` to set the new send buffer size.
+
+    On success, zero is returned. On error, a negative result is
+    returned.
 
     This function works for TCP, pipe and UDP handles on Unix and for TCP and
     UDP handles on Windows.
@@ -204,8 +207,11 @@ just for some handle types.
     Gets or sets the size of the receive buffer that the operating
     system uses for the socket.
 
-    If `*value` == 0, it will return the current receive buffer size,
-    otherwise it will use `*value` to set the new receive buffer size.
+    If `*value` == 0, then it will set `*value` to the current receive buffer size.
+    If `*value` > 0 then it will use `*value` to set the new receive buffer size.
+
+    On success, zero is returned. On error, a negative result is
+    returned.
 
     This function works for TCP, pipe and UDP handles on Unix and for TCP and
     UDP handles on Windows.

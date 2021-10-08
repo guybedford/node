@@ -1,4 +1,4 @@
-// Flags: --expose-gc
+// Flags: --expose-gc --expose-internals
 'use strict';
 
 const common = require('../common');
@@ -6,6 +6,7 @@ const assert = require('assert');
 const {
   monitorEventLoopDelay
 } = require('perf_hooks');
+const { sleep } = require('internal/util');
 
 {
   const histogram = monitorEventLoopDelay();
@@ -19,31 +20,31 @@ const {
 
 {
   [null, 'a', 1, false, Infinity].forEach((i) => {
-    common.expectsError(
+    assert.throws(
       () => monitorEventLoopDelay(i),
       {
-        type: TypeError,
+        name: 'TypeError',
         code: 'ERR_INVALID_ARG_TYPE'
       }
     );
   });
 
   [null, 'a', false, {}, []].forEach((i) => {
-    common.expectsError(
+    assert.throws(
       () => monitorEventLoopDelay({ resolution: i }),
       {
-        type: TypeError,
+        name: 'TypeError',
         code: 'ERR_INVALID_ARG_TYPE'
       }
     );
   });
 
-  [-1, 0, Infinity].forEach((i) => {
-    common.expectsError(
+  [-1, 0, 2 ** 53, Infinity].forEach((i) => {
+    assert.throws(
       () => monitorEventLoopDelay({ resolution: i }),
       {
-        type: RangeError,
-        code: 'ERR_INVALID_OPT_VALUE'
+        name: 'RangeError',
+        code: 'ERR_OUT_OF_RANGE'
       }
     );
   });
@@ -54,7 +55,7 @@ const {
   histogram.enable();
   let m = 5;
   function spinAWhile() {
-    common.busyLoop(1000);
+    sleep(1000);
     if (--m > 0) {
       setTimeout(spinAWhile, common.platformTimeout(500));
     } else {
@@ -77,19 +78,19 @@ const {
       assert.strictEqual(histogram.percentiles.size, 1);
 
       ['a', false, {}, []].forEach((i) => {
-        common.expectsError(
+        assert.throws(
           () => histogram.percentile(i),
           {
-            type: TypeError,
+            name: 'TypeError',
             code: 'ERR_INVALID_ARG_TYPE'
           }
         );
       });
-      [-1, 0, 101].forEach((i) => {
-        common.expectsError(
+      [-1, 0, 101, NaN].forEach((i) => {
+        assert.throws(
           () => histogram.percentile(i),
           {
-            type: RangeError,
+            name: 'RangeError',
             code: 'ERR_INVALID_ARG_VALUE'
           }
         );

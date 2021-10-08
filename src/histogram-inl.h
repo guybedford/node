@@ -4,56 +4,81 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "histogram.h"
+#include "base_object-inl.h"
 #include "node_internals.h"
 
 namespace node {
 
-inline Histogram::Histogram(int64_t lowest, int64_t highest, int figures) {
-  CHECK_EQ(0, hdr_init(lowest, highest, figures, &histogram_));
+void Histogram::Reset() {
+  Mutex::ScopedLock lock(mutex_);
+  hdr_reset(histogram_.get());
+  exceeds_ = 0;
+  prev_ = 0;
 }
 
-inline Histogram::~Histogram() {
-  hdr_close(histogram_);
+int64_t Histogram::Min() {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_min(histogram_.get());
 }
 
-inline void Histogram::Reset() {
-  hdr_reset(histogram_);
+int64_t Histogram::Max() {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_max(histogram_.get());
 }
 
-inline bool Histogram::Record(int64_t value) {
-  return hdr_record_value(histogram_, value);
+double Histogram::Mean() {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_mean(histogram_.get());
 }
 
-inline int64_t Histogram::Min() {
-  return hdr_min(histogram_);
+double Histogram::Stddev() {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_stddev(histogram_.get());
 }
 
-inline int64_t Histogram::Max() {
-  return hdr_max(histogram_);
-}
-
-inline double Histogram::Mean() {
-  return hdr_mean(histogram_);
-}
-
-inline double Histogram::Stddev() {
-  return hdr_stddev(histogram_);
-}
-
-inline double Histogram::Percentile(double percentile) {
+double Histogram::Percentile(double percentile) {
+  Mutex::ScopedLock lock(mutex_);
   CHECK_GT(percentile, 0);
   CHECK_LE(percentile, 100);
-  return hdr_value_at_percentile(histogram_, percentile);
+  return static_cast<double>(
+      hdr_value_at_percentile(histogram_.get(), percentile));
 }
 
-inline void Histogram::Percentiles(std::function<void(double, double)> fn) {
+template <typename Iterator>
+void Histogram::Percentiles(Iterator&& fn) {
+  Mutex::ScopedLock lock(mutex_);
   hdr_iter iter;
-  hdr_iter_percentile_init(&iter, histogram_, 1);
+  hdr_iter_percentile_init(&iter, histogram_.get(), 1);
   while (hdr_iter_next(&iter)) {
     double key = iter.specifics.percentiles.percentile;
-    double value = iter.value;
+    double value = static_cast<double>(iter.value);
     fn(key, value);
   }
+}
+
+bool Histogram::Record(int64_t value) {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_record_value(histogram_.get(), value);
+}
+
+uint64_t Histogram::RecordDelta() {
+  Mutex::ScopedLock lock(mutex_);
+  uint64_t time = uv_hrtime();
+  uint64_t delta = 0;
+  if (prev_ > 0) {
+    delta = time - prev_;
+    if (delta > 0) {
+      if (!hdr_record_value(histogram_.get(), delta) && exceeds_ < 0xFFFFFFFF)
+        exceeds_++;
+    }
+  }
+  prev_ = time;
+  return delta;
+}
+
+size_t Histogram::GetMemorySize() const {
+  Mutex::ScopedLock lock(mutex_);
+  return hdr_get_memory_size(histogram_.get());
 }
 
 }  // namespace node

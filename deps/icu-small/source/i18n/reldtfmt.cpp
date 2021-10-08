@@ -51,7 +51,7 @@ RelativeDateFormat::RelativeDateFormat(const RelativeDateFormat& other) :
  fCapitalizationBrkIter(NULL)
 {
     if(other.fDateTimeFormatter != NULL) {
-        fDateTimeFormatter = (SimpleDateFormat*)other.fDateTimeFormatter->clone();
+        fDateTimeFormatter = other.fDateTimeFormatter->clone();
     }
     if(other.fCombinedFormat != NULL) {
         fCombinedFormat = new SimpleFormatter(*other.fCombinedFormat);
@@ -131,7 +131,7 @@ RelativeDateFormat::~RelativeDateFormat() {
 }
 
 
-Format* RelativeDateFormat::clone(void) const {
+RelativeDateFormat* RelativeDateFormat::clone() const {
     return new RelativeDateFormat(*this);
 }
 
@@ -334,7 +334,7 @@ UDate
 RelativeDateFormat::parse( const UnicodeString& text,
                          ParsePosition& pos) const {
     // redefined here because the other parse() function hides this function's
-    // cunterpart on DateFormat
+    // counterpart on DateFormat
     return DateFormat::parse(text, pos);
 }
 

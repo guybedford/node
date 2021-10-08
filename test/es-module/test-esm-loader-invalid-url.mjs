@@ -1,12 +1,14 @@
-// Flags: --experimental-modules --experimental-loader ./test/fixtures/es-module-loaders/loader-invalid-url.mjs
+// Flags: --experimental-loader ./test/fixtures/es-module-loaders/loader-invalid-url.mjs
 import { expectsError, mustCall } from '../common/index.mjs';
 import assert from 'assert';
 
 import('../fixtures/es-modules/test-esm-ok.mjs')
-.then(assert.fail, expectsError({
-  code: 'ERR_INVALID_RETURN_PROPERTY',
-  message: 'Expected a valid url to be returned for the "url" from the ' +
-           '"loader resolve" function but got ' +
-           '../fixtures/es-modules/test-esm-ok.mjs.'
-}))
+.then(assert.fail, (error) => {
+  expectsError({
+    code: 'ERR_INVALID_URL',
+    message: 'Invalid URL'
+  })(error);
+
+  assert.strictEqual(error.input, '../fixtures/es-modules/test-esm-ok.mjs');
+})
 .then(mustCall());

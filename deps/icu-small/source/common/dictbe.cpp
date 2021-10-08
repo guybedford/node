@@ -18,6 +18,7 @@
 #include "unicode/uniset.h"
 #include "unicode/chariter.h"
 #include "unicode/ubrk.h"
+#include "utracimp.h"
 #include "uvectr32.h"
 #include "uvector.h"
 #include "uassert.h"
@@ -194,6 +195,8 @@ ThaiBreakEngine::ThaiBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode 
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
+    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
+    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Thai");
     fThaiWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Thai:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
         setCharacters(fThaiWordSet);
@@ -213,6 +216,7 @@ ThaiBreakEngine::ThaiBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode 
     fEndWordSet.compact();
     fBeginWordSet.compact();
     fSuffixSet.compact();
+    UTRACE_EXIT_STATUS(status);
 }
 
 ThaiBreakEngine::~ThaiBreakEngine() {
@@ -261,13 +265,9 @@ ThaiBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
-                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % THAI_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    if (wordsMatched < 2) {
-                        // Followed by another dictionary word; mark first word as a good candidate
-                        words[wordsFound%THAI_LOOKAHEAD].markCurrent();
-                        wordsMatched = 2;
-                    }
+                    // Followed by another dictionary word; mark first word as a good candidate
+                    words[wordsFound%THAI_LOOKAHEAD].markCurrent();
 
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -436,6 +436,8 @@ LaoBreakEngine::LaoBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode &s
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
+    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
+    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Laoo");
     fLaoWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Laoo:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
         setCharacters(fLaoWordSet);
@@ -452,6 +454,7 @@ LaoBreakEngine::LaoBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode &s
     fMarkSet.compact();
     fEndWordSet.compact();
     fBeginWordSet.compact();
+    UTRACE_EXIT_STATUS(status);
 }
 
 LaoBreakEngine::~LaoBreakEngine() {
@@ -496,13 +499,9 @@ LaoBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
-                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % LAO_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    if (wordsMatched < 2) {
-                        // Followed by another dictionary word; mark first word as a good candidate
-                        words[wordsFound%LAO_LOOKAHEAD].markCurrent();
-                        wordsMatched = 2;
-                    }
+                    // Followed by another dictionary word; mark first word as a good candidate
+                    words[wordsFound%LAO_LOOKAHEAD].markCurrent();
 
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -632,6 +631,8 @@ BurmeseBreakEngine::BurmeseBreakEngine(DictionaryMatcher *adoptDictionary, UErro
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
+    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
+    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Mymr");
     fBurmeseWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Mymr:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
         setCharacters(fBurmeseWordSet);
@@ -645,6 +646,7 @@ BurmeseBreakEngine::BurmeseBreakEngine(DictionaryMatcher *adoptDictionary, UErro
     fMarkSet.compact();
     fEndWordSet.compact();
     fBeginWordSet.compact();
+    UTRACE_EXIT_STATUS(status);
 }
 
 BurmeseBreakEngine::~BurmeseBreakEngine() {
@@ -689,13 +691,9 @@ BurmeseBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
-                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % BURMESE_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    if (wordsMatched < 2) {
-                        // Followed by another dictionary word; mark first word as a good candidate
-                        words[wordsFound%BURMESE_LOOKAHEAD].markCurrent();
-                        wordsMatched = 2;
-                    }
+                    // Followed by another dictionary word; mark first word as a good candidate
+                    words[wordsFound%BURMESE_LOOKAHEAD].markCurrent();
 
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -825,6 +823,8 @@ KhmerBreakEngine::KhmerBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCod
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
+    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
+    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Khmr");
     fKhmerWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Khmr:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
         setCharacters(fKhmerWordSet);
@@ -850,6 +850,7 @@ KhmerBreakEngine::KhmerBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCod
     fEndWordSet.compact();
     fBeginWordSet.compact();
 //    fSuffixSet.compact();
+    UTRACE_EXIT_STATUS(status);
 }
 
 KhmerBreakEngine::~KhmerBreakEngine() {
@@ -895,13 +896,9 @@ KhmerBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
-                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % KHMER_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    if (wordsMatched < 2) {
-                        // Followed by another dictionary word; mark first word as a good candidate
-                        words[wordsFound % KHMER_LOOKAHEAD].markCurrent();
-                        wordsMatched = 2;
-                    }
+                    // Followed by another dictionary word; mark first word as a good candidate
+                    words[wordsFound % KHMER_LOOKAHEAD].markCurrent();
 
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -1045,6 +1042,8 @@ foundBest:
 static const uint32_t kuint32max = 0xFFFFFFFF;
 CjkBreakEngine::CjkBreakEngine(DictionaryMatcher *adoptDictionary, LanguageType type, UErrorCode &status)
 : DictionaryBreakEngine(), fDictionary(adoptDictionary) {
+    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
+    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Hani");
     // Korean dictionary only includes Hangul syllables
     fHangulWordSet.applyPattern(UNICODE_STRING_SIMPLE("[\\uac00-\\ud7a3]"), status);
     fHanWordSet.applyPattern(UNICODE_STRING_SIMPLE("[:Han:]"), status);
@@ -1066,6 +1065,7 @@ CjkBreakEngine::CjkBreakEngine(DictionaryMatcher *adoptDictionary, LanguageType 
             setCharacters(cjSet);
         }
     }
+    UTRACE_EXIT_STATUS(status);
 }
 
 CjkBreakEngine::~CjkBreakEngine(){

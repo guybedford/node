@@ -1,7 +1,6 @@
 # Node.js ChangeLog Archive
 
-<!--lint disable prohibited-strings-->
-<!--lint disable maximum-line-length-->
+<!--lint disable maximum-line-length no-literal-urls prohibited-strings-->
 
 <table>
 <tr>
@@ -72,6 +71,7 @@
 <a href="#0.8.3">0.8.3</a><br/>
 <a href="#0.8.2">0.8.2</a><br/>
 <a href="#0.8.1">0.8.1</a><br/>
+<a href="#0.8.0">0.8.0</a><br/>
 </td>
 <td valign="top">
 <a href="#0.7.12">0.7.12</a><br/>
@@ -154,6 +154,8 @@
 </table>
 
 * Other Versions
+  * [14.x](CHANGELOG_V14.md)
+  * [13.x](CHANGELOG_V13.md)
   * [12.x](CHANGELOG_V12.md)
   * [11.x](CHANGELOG_V11.md)
   * [10.x](CHANGELOG_V10.md)
@@ -3127,8 +3129,8 @@ https://github.com/nodejs/node/commit/bb0d1e65e1671aaeb21fac186b066701da0bc33b
 
 * Major API Changes
   * Promises removed. See
-    http://groups.google.com/group/nodejs/msg/426f3071f3eec16b
-    http://groups.google.com/group/nodejs/msg/df199d233ff17efa
+    https://groups.google.com/group/nodejs/msg/426f3071f3eec16b
+    https://groups.google.com/group/nodejs/msg/df199d233ff17efa
     The API for fs was
         fs.readdir("/usr").addCallback(function (files) {
           puts("/usr files: " + files);
@@ -3715,7 +3717,7 @@ https://github.com/nodejs/node/commit/77d407df2826b20e9177c26c0d2bb4481e497937
 * Move EventEmitter.prototype.emit() completely into C++.
 
 * Bugfix: Fix memory leak in event emitters.
-  http://groups.google.com/group/nodejs/browse_thread/thread/a8d1dfc2fd57a6d1
+  https://groups.google.com/group/nodejs/browse_thread/thread/a8d1dfc2fd57a6d1
 
 * Bugfix: Had problems reading scripts with non-ascii characters.
 * Bugfix: Fix Detach() in node::Server

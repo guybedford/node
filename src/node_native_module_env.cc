@@ -1,5 +1,6 @@
 #include "node_native_module_env.h"
 #include "env-inl.h"
+#include "node_external_reference.h"
 
 namespace node {
 namespace native_module {
@@ -11,7 +12,6 @@ using v8::FunctionCallbackInfo;
 using v8::IntegrityLevel;
 using v8::Isolate;
 using v8::Local;
-using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Name;
 using v8::None;
@@ -31,6 +31,10 @@ Local<Set> ToJsSet(Local<Context> context, const std::set<std::string>& in) {
         .ToLocalChecked();
   }
   return out;
+}
+
+bool NativeModuleEnv::Add(const char* id, const UnionBytes& source) {
+  return NativeModuleLoader::GetInstance()->Add(id, source);
 }
 
 bool NativeModuleEnv::Exists(const char* id) {
@@ -91,6 +95,14 @@ void NativeModuleEnv::GetCacheUsage(const FunctionCallbackInfo<Value>& args) {
             OneByteString(isolate, "compiledWithoutCache"),
             ToJsSet(context, env->native_modules_without_cache))
       .FromJust();
+
+  result
+      ->Set(env->context(),
+            OneByteString(isolate, "compiledInSnapshot"),
+            ToV8Value(env->context(), env->native_modules_in_snapshot)
+                .ToLocalChecked())
+      .FromJust();
+
   args.GetReturnValue().Set(result);
 }
 
@@ -128,8 +140,9 @@ void NativeModuleEnv::CompileFunction(const FunctionCallbackInfo<Value>& args) {
       NativeModuleLoader::GetInstance()->CompileAsModule(
           env->context(), id, &result);
   RecordResult(id, result, env);
-  if (!maybe.IsEmpty()) {
-    args.GetReturnValue().Set(maybe.ToLocalChecked());
+  Local<Function> fn;
+  if (maybe.ToLocal(&fn)) {
+    args.GetReturnValue().Set(fn);
   }
 }
 
@@ -149,6 +162,11 @@ MaybeLocal<Function> NativeModuleEnv::LookupAndCompile(
     RecordResult(id, result, optional_env);
   }
   return maybe;
+}
+
+void HasCachedBuiltins(const FunctionCallbackInfo<Value>& args) {
+  args.GetReturnValue().Set(
+      v8::Boolean::New(args.GetIsolate(), has_code_cache));
 }
 
 // TODO(joyeecheung): It is somewhat confusing that Class::Initialize
@@ -186,7 +204,7 @@ void NativeModuleEnv::Initialize(Local<Object> target,
                     FIXED_ONE_BYTE_STRING(env->isolate(), "moduleCategories"),
                     GetModuleCategories,
                     nullptr,
-                    env->as_callback_data(),
+                    Local<Value>(),
                     DEFAULT,
                     None,
                     SideEffectType::kHasNoSideEffect)
@@ -194,8 +212,19 @@ void NativeModuleEnv::Initialize(Local<Object> target,
 
   env->SetMethod(target, "getCacheUsage", NativeModuleEnv::GetCacheUsage);
   env->SetMethod(target, "compileFunction", NativeModuleEnv::CompileFunction);
+  env->SetMethod(target, "hasCachedBuiltins", HasCachedBuiltins);
   // internalBinding('native_module') should be frozen
   target->SetIntegrityLevel(context, IntegrityLevel::kFrozen).FromJust();
+}
+
+void NativeModuleEnv::RegisterExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(ConfigStringGetter);
+  registry->Register(ModuleIdsGetter);
+  registry->Register(GetModuleCategories);
+  registry->Register(GetCacheUsage);
+  registry->Register(CompileFunction);
+  registry->Register(HasCachedBuiltins);
 }
 
 }  // namespace native_module
@@ -203,3 +232,6 @@ void NativeModuleEnv::Initialize(Local<Object> target,
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(
     native_module, node::native_module::NativeModuleEnv::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(
+    native_module,
+    node::native_module::NativeModuleEnv::RegisterExternalReferences)

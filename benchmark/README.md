@@ -32,6 +32,7 @@ directory, see [the guide on benchmarks](../doc/guides/writing-and-running-bench
 | module          | Benchmarks for the `module` subsystem.                                                                           |
 | net             | Benchmarks for the `net` subsystem.                                                                              |
 | path            | Benchmarks for the `path` subsystem.                                                                             |
+| perf\_hooks     | Benchmarks for the `perf_hooks` subsystem.                                                                       |
 | process         | Benchmarks for the `process` subsystem.                                                                          |
 | querystring     | Benchmarks for the `querystring` subsystem.                                                                      |
 | streams         | Benchmarks for the `streams` subsystem.                                                                          |
@@ -74,21 +75,21 @@ The common.js module is used by benchmarks for consistency across repeated
 tasks. It has a number of helpful functions and properties to help with
 writing benchmarks.
 
-### createBenchmark(fn, configs[, options])
+### `createBenchmark(fn, configs[, options])`
 
 See [the guide on writing benchmarks](../doc/guides/writing-and-running-benchmarks.md#basics-of-a-benchmark).
 
-### default\_http\_benchmarker
+### `default_http_benchmarker`
 
 The default benchmarker used to run HTTP benchmarks.
 See [the guide on writing HTTP benchmarks](../doc/guides/writing-and-running-benchmarks.md#creating-an-http-benchmark).
 
-### PORT
+### `PORT`
 
 The default port used to run HTTP benchmarks.
 See [the guide on writing HTTP benchmarks](../doc/guides/writing-and-running-benchmarks.md#creating-an-http-benchmark).
 
-### sendResult(data)
+### `sendResult(data)`
 
 Used in special benchmarks that can't use `createBenchmark` and the object
 it returns to accomplish what they need. This function reports timing

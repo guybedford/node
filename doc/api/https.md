@@ -4,26 +4,28 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/https.js -->
+
 HTTPS is the HTTP protocol over TLS/SSL. In Node.js this is implemented as a
 separate module.
 
-## Class: https.Agent
+## Class: `https.Agent`
 <!-- YAML
 added: v0.4.5
 changes:
+  - version: v5.3.0
+    pr-url: https://github.com/nodejs/node/pull/4252
+    description: support `0` `maxCachedSessions` to disable TLS session caching.
   - version: v2.5.0
     pr-url: https://github.com/nodejs/node/pull/2228
     description: parameter `maxCachedSessions` added to `options` for TLS
                  sessions reuse.
-  - version: v5.3.0
-    pr-url: https://github.com/nodejs/node/pull/4252
-    description: support `0` `maxCachedSessions` to disable TLS session caching.
 -->
 
 An [`Agent`][] object for HTTPS similar to [`http.Agent`][]. See
 [`https.request()`][] for more information.
 
-### new Agent(\[options\])
+### `new Agent([options])`
 <!-- YAML
 changes:
   - version: v12.5.0
@@ -39,13 +41,40 @@ changes:
   * `servername` {string} the value of
     [Server Name Indication extension][sni wiki] to be sent to the server. Use
     empty string `''` to disable sending the extension.
-    **Default:** hostname of the target server, unless the target server
+    **Default:** host name of the target server, unless the target server
     is specified using an IP address, in which case the default is `''` (no
     extension).
 
     See [`Session Resumption`][] for information about TLS session reuse.
 
-## Class: https.Server
+#### Event: `'keylog'`
+<!-- YAML
+added:
+ - v13.2.0
+ - v12.16.0
+-->
+
+* `line` {Buffer} Line of ASCII text, in NSS `SSLKEYLOGFILE` format.
+* `tlsSocket` {tls.TLSSocket} The `tls.TLSSocket` instance on which it was
+  generated.
+
+The `keylog` event is emitted when key material is generated or received by a
+connection managed by this agent (typically before handshake has completed, but
+not necessarily). This keying material can be stored for debugging, as it
+allows captured TLS traffic to be decrypted. It may be emitted multiple times
+for each socket.
+
+A typical use case is to append received lines to a common text file, which is
+later used by software (such as Wireshark) to decrypt the traffic:
+
+```js
+// ...
+https.globalAgent.on('keylog', (line, tlsSocket) => {
+  fs.appendFileSync('/tmp/ssl-keys.log', line, { mode: 0o600 });
+});
+```
+
+## Class: `https.Server`
 <!-- YAML
 added: v0.3.4
 -->
@@ -54,7 +83,7 @@ added: v0.3.4
 
 See [`http.Server`][] for more information.
 
-### server.close(\[callback\])
+### `server.close([callback])`
 <!-- YAML
 added: v0.1.90
 -->
@@ -64,27 +93,36 @@ added: v0.1.90
 
 See [`server.close()`][`http.close()`] from the HTTP module for details.
 
-### server.headersTimeout
+### `server.headersTimeout`
 <!-- YAML
 added: v11.3.0
 -->
 
-* {number} **Default:** `40000`
+* {number} **Default:** `60000`
 
 See [`http.Server#headersTimeout`][].
 
-### server.listen()
+### `server.listen()`
 
 Starts the HTTPS server listening for encrypted connections.
 This method is identical to [`server.listen()`][] from [`net.Server`][].
 
-### server.maxHeadersCount
+### `server.maxHeadersCount`
 
 * {number} **Default:** `2000`
 
 See [`http.Server#maxHeadersCount`][].
 
-### server.setTimeout(\[msecs\]\[, callback\])
+### `server.requestTimeout`
+<!-- YAML
+added: v14.11.0
+-->
+
+* {number} **Default:** `0`
+
+See [`http.Server#requestTimeout`][].
+
+### `server.setTimeout([msecs][, callback])`
 <!-- YAML
 added: v0.11.2
 -->
@@ -95,16 +133,20 @@ added: v0.11.2
 
 See [`http.Server#setTimeout()`][].
 
-### server.timeout
+### `server.timeout`
 <!-- YAML
 added: v0.11.2
+changes:
+  - version: v13.0.0
+    pr-url: https://github.com/nodejs/node/pull/27558
+    description: The default timeout changed from 120s to 0 (no timeout).
 -->
 
-* {number} **Default:** `120000` (2 minutes)
+* {number} **Default:** 0 (no timeout)
 
 See [`http.Server#timeout`][].
 
-### server.keepAliveTimeout
+### `server.keepAliveTimeout`
 <!-- YAML
 added: v8.0.0
 -->
@@ -113,13 +155,13 @@ added: v8.0.0
 
 See [`http.Server#keepAliveTimeout`][].
 
-## https.createServer(\[options\]\[, requestListener\])
+## `https.createServer([options][, requestListener])`
 <!-- YAML
 added: v0.3.4
 -->
 
 * `options` {Object} Accepts `options` from [`tls.createServer()`][],
- [`tls.createSecureContext()`][] and [`http.createServer()`][].
+  [`tls.createSecureContext()`][] and [`http.createServer()`][].
 * `requestListener` {Function} A listener to be added to the `'request'` event.
 * Returns: {https.Server}
 
@@ -156,8 +198,8 @@ https.createServer(options, (req, res) => {
 }).listen(8000);
 ```
 
-## https.get(options\[, callback\])
-## https.get(url\[, options\]\[, callback\])
+## `https.get(options[, callback])`
+## `https.get(url[, options][, callback])`
 <!-- YAML
 added: v0.3.6
 changes:
@@ -197,18 +239,29 @@ https.get('https://encrypted.google.com/', (res) => {
 });
 ```
 
-## https.globalAgent
+## `https.globalAgent`
 <!-- YAML
 added: v0.5.9
 -->
 
 Global instance of [`https.Agent`][] for all HTTPS client requests.
 
-## https.request(options\[, callback\])
-## https.request(url\[, options\]\[, callback\])
+## `https.request(options[, callback])`
+## `https.request(url[, options][, callback])`
 <!-- YAML
 added: v0.3.6
 changes:
+  - version:
+      - v16.7.0
+      - v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/39310
+    description: When using a `URL` object parsed username
+                 and password will now be properly URI decoded.
+  - version:
+      - v14.1.0
+      - v13.14.0
+    pr-url: https://github.com/nodejs/node/pull/32786
+    description: The `highWaterMark` option is accepted now.
   - version: v10.9.0
     pr-url: https://github.com/nodejs/node/pull/21616
     description: The `url` parameter can now be passed along with a separate
@@ -228,17 +281,23 @@ changes:
   * `port` **Default:** `443`
   * `agent` **Default:** `https.globalAgent`
 * `callback` {Function}
+* Returns: {http.ClientRequest}
 
 Makes a request to a secure web server.
 
 The following additional `options` from [`tls.connect()`][] are also accepted:
 `ca`, `cert`, `ciphers`, `clientCertEngine`, `crl`, `dhparam`, `ecdhCurve`,
 `honorCipherOrder`, `key`, `passphrase`, `pfx`, `rejectUnauthorized`,
-`secureOptions`, `secureProtocol`, `servername`, `sessionIdContext`.
+`secureOptions`, `secureProtocol`, `servername`, `sessionIdContext`,
+`highWaterMark`.
 
 `options` can be an object, a string, or a [`URL`][] object. If `options` is a
 string, it is automatically parsed with [`new URL()`][]. If it is a [`URL`][]
 object, it will be automatically converted to an ordinary `options` object.
+
+`https.request()` returns an instance of the [`http.ClientRequest`][]
+class. The `ClientRequest` instance is a writable stream. If one needs to
+upload a file with a POST request, then write to the `ClientRequest` object.
 
 ```js
 const https = require('https');
@@ -343,7 +402,7 @@ const options = {
       return new Error(msg);
     }
 
-    // Pin the exact certificate, rather then the pub key
+    // Pin the exact certificate, rather than the pub key
     const cert256 = '25:FE:39:32:D9:63:8C:8A:FC:A1:9A:29:87:' +
       'D8:3E:4C:1D:98:DB:71:E4:1A:48:03:98:EA:22:6A:BD:8B:93:16';
     if (cert.fingerprint256 !== cert256) {
@@ -405,27 +464,29 @@ statusCode: 200
 headers: max-age=0; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; pin-sha256="RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho="; pin-sha256="k2v657xBsOVe1PQRwOsHsw3bsGT2VzIqz5K+59sNQws="; pin-sha256="K87oWBWM9UZfyddvDfoxL+8lpNyoUB2ptGtn0fv6G2Q="; pin-sha256="IQBnNBEiFuhj+8x6X8XLgh01V9Ic5/V3IRQLNFFc7v4="; pin-sha256="iie1VXtL7HzAMF+/PVPR9xzT80kQxdZeJ+zduCB3uj0="; pin-sha256="LvRiGEjRqfzurezaWuj8Wie2gyHMrW5Q06LspMnox7A="; includeSubDomains
 ```
 
-[`Agent`]: #https_class_https_agent
-[`URL`]: url.html#url_the_whatwg_url_api
-[`http.Agent`]: http.html#http_class_http_agent
-[`http.Agent(options)`]: http.html#http_new_agent_options
-[`http.Server#headersTimeout`]: http.html#http_server_headerstimeout
-[`http.Server#keepAliveTimeout`]: http.html#http_server_keepalivetimeout
-[`http.Server#maxHeadersCount`]: http.html#http_server_maxheaderscount
-[`http.Server#setTimeout()`]: http.html#http_server_settimeout_msecs_callback
-[`http.Server#timeout`]: http.html#http_server_timeout
-[`http.Server`]: http.html#http_class_http_server
-[`http.close()`]: http.html#http_server_close_callback
-[`http.createServer()`]: http.html#http_http_createserver_options_requestlistener
-[`http.get()`]: http.html#http_http_get_options_callback
-[`http.request()`]: http.html#http_http_request_options_callback
-[`https.Agent`]: #https_class_https_agent
-[`https.request()`]: #https_https_request_options_callback
-[`net.Server`]: net.html#net_class_net_server
-[`new URL()`]: url.html#url_constructor_new_url_input_base
-[`server.listen()`]: net.html#net_server_listen
-[`tls.connect()`]: tls.html#tls_tls_connect_options_callback
-[`tls.createSecureContext()`]: tls.html#tls_tls_createsecurecontext_options
-[`tls.createServer()`]: tls.html#tls_tls_createserver_options_secureconnectionlistener
-[`Session Resumption`]: tls.html#tls_session_resumption
+[`Agent`]: #class-httpsagent
+[`Session Resumption`]: tls.md#session-resumption
+[`URL`]: url.md#the-whatwg-url-api
+[`http.Agent(options)`]: http.md#new-agentoptions
+[`http.Agent`]: http.md#class-httpagent
+[`http.ClientRequest`]: http.md#class-httpclientrequest
+[`http.Server#headersTimeout`]: http.md#serverheaderstimeout
+[`http.Server#keepAliveTimeout`]: http.md#serverkeepalivetimeout
+[`http.Server#maxHeadersCount`]: http.md#servermaxheaderscount
+[`http.Server#requestTimeout`]: http.md#serverrequesttimeout
+[`http.Server#setTimeout()`]: http.md#serversettimeoutmsecs-callback
+[`http.Server#timeout`]: http.md#servertimeout
+[`http.Server`]: http.md#class-httpserver
+[`http.close()`]: http.md#serverclosecallback
+[`http.createServer()`]: http.md#httpcreateserveroptions-requestlistener
+[`http.get()`]: http.md#httpgetoptions-callback
+[`http.request()`]: http.md#httprequestoptions-callback
+[`https.Agent`]: #class-httpsagent
+[`https.request()`]: #httpsrequestoptions-callback
+[`net.Server`]: net.md#class-netserver
+[`new URL()`]: url.md#new-urlinput-base
+[`server.listen()`]: net.md#serverlisten
+[`tls.connect()`]: tls.md#tlsconnectoptions-callback
+[`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions
+[`tls.createServer()`]: tls.md#tlscreateserveroptions-secureconnectionlistener
 [sni wiki]: https://en.wikipedia.org/wiki/Server_Name_Indication

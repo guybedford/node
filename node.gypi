@@ -70,7 +70,7 @@
     }],
     [ 'node_use_bundled_v8=="true"', {
       'dependencies': [
-        'tools/v8_gypfiles/v8.gyp:v8_maybe_snapshot',
+        'tools/v8_gypfiles/v8.gyp:v8_snapshot',
         'tools/v8_gypfiles/v8.gyp:v8_libplatform',
       ],
     }],
@@ -103,6 +103,13 @@
       'conditions': [
         [ 'icu_small=="true"', {
           'defines': [ 'NODE_HAVE_SMALL_ICU=1' ],
+          'conditions': [
+            [ 'icu_default_data!=""', {
+              'defines': [
+                'NODE_ICU_DEFAULT_DATA_DIR="<(icu_default_data)"',
+              ],
+            }],
+          ],
       }]],
     }],
     [ 'node_no_browser_globals=="true"', {
@@ -264,6 +271,16 @@
         ],
       },
     }],
+    [ 'debug_node=="true"', {
+      'cflags!': [ '-O3' ],
+      'cflags': [ '-g', '-O0' ],
+      'defines': [ 'DEBUG' ],
+      'xcode_settings': {
+        'OTHER_CFLAGS': [
+          '-g', '-O0'
+        ],
+      },
+    }],
     [ 'coverage=="true" and node_shared=="false" and OS in "mac freebsd linux"', {
       'cflags!': [ '-O3' ],
       'ldflags': [ '--coverage',
@@ -299,30 +316,9 @@
       'ldflags': [ '-Wl,-z,relro',
                    '-Wl,-z,now' ]
     }],
-    [ 'OS=="linux" and '
-      'target_arch=="x64" and '
-      'node_use_large_pages=="true" and '
-      'node_use_large_pages_script_lld=="false"', {
-      'ldflags': [
-        '-Wl,-T',
-        '<!(realpath src/large_pages/ld.implicit.script)',
-      ]
-    }],
-    [ 'OS=="linux" and '
-      'target_arch=="x64" and '
-      'node_use_large_pages=="true" and '
-      'node_use_large_pages_script_lld=="true"', {
-      'ldflags': [
-        '-Wl,-T',
-        '<!(realpath src/large_pages/ld.implicit.script.lld)',
-      ]
-    }],
     [ 'node_use_openssl=="true"', {
       'defines': [ 'HAVE_OPENSSL=1' ],
       'conditions': [
-        ['openssl_fips != "" or openssl_is_fips=="true"', {
-          'defines': [ 'NODE_FIPS_MODE' ],
-        }],
         [ 'node_shared_openssl=="false"', {
           'dependencies': [
             './deps/openssl/openssl.gyp:openssl',
@@ -364,12 +360,21 @@
                 }],
               ],
             }],
-          ],
-        }]]
-
+          ]
+        }, {
+          # Set 1.0.0 as the API compatibility level to avoid the
+          # deprecation warnings when using OpenSSL 3.0.
+          'defines': [ 'OPENSSL_API_COMPAT=0x10000000L', ]
+        }],
+        [ 'openssl_quic=="true" and node_shared_ngtcp2=="false"', {
+          'dependencies': [ './deps/ngtcp2/ngtcp2.gyp:ngtcp2' ]
+        }],
+        [ 'openssl_quic=="true" and node_shared_nghttp3=="false"', {
+          'dependencies': [ './deps/ngtcp2/ngtcp2.gyp:nghttp3' ]
+        }]
+      ]
     }, {
       'defines': [ 'HAVE_OPENSSL=0' ]
     }],
-
   ],
 }

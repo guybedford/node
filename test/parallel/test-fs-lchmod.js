@@ -2,7 +2,6 @@
 
 const common = require('../common');
 const assert = require('assert');
-const util = require('util');
 const fs = require('fs');
 const { promises } = fs;
 const f = __filename;
@@ -21,33 +20,37 @@ assert.throws(() => fs.lchmod(f, {}), { code: 'ERR_INVALID_CALLBACK' });
 
 // Check path
 [false, 1, {}, [], null, undefined].forEach((i) => {
-  common.expectsError(
+  assert.throws(
     () => fs.lchmod(i, 0o777, common.mustNotCall()),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
-  common.expectsError(
+  assert.throws(
     () => fs.lchmodSync(i),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
 });
 
 // Check mode
-[false, null, undefined, {}, [], '', '123x'].forEach((input) => {
+[false, null, {}, []].forEach((input) => {
   const errObj = {
-    code: 'ERR_INVALID_ARG_VALUE',
-    name: 'TypeError',
-    message: 'The argument \'mode\' must be a 32-bit unsigned integer or an ' +
-             `octal string. Received ${util.inspect(input)}`
+    code: 'ERR_INVALID_ARG_TYPE',
   };
 
   assert.rejects(promises.lchmod(f, input, () => {}), errObj);
   assert.throws(() => fs.lchmodSync(f, input), errObj);
+});
+
+assert.throws(() => fs.lchmod(f, '123x', common.mustNotCall()), {
+  code: 'ERR_INVALID_ARG_VALUE'
+});
+assert.throws(() => fs.lchmodSync(f, '123x'), {
+  code: 'ERR_INVALID_ARG_VALUE'
 });
 
 [-1, 2 ** 32].forEach((input) => {

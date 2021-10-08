@@ -52,19 +52,15 @@ class ProcessWrap : public HandleWrap {
                          void* priv) {
     Environment* env = Environment::GetCurrent(context);
     Local<FunctionTemplate> constructor = env->NewFunctionTemplate(New);
-    constructor->InstanceTemplate()->SetInternalFieldCount(1);
-    Local<String> processString =
-        FIXED_ONE_BYTE_STRING(env->isolate(), "Process");
-    constructor->SetClassName(processString);
+    constructor->InstanceTemplate()->SetInternalFieldCount(
+        ProcessWrap::kInternalFieldCount);
 
     constructor->Inherit(HandleWrap::GetConstructorTemplate(env));
 
     env->SetProtoMethod(constructor, "spawn", Spawn);
     env->SetProtoMethod(constructor, "kill", Kill);
 
-    target->Set(env->context(),
-                processString,
-                constructor->GetFunction(context).ToLocalChecked()).Check();
+    env->SetConstructorFunction(target, "Process", constructor);
   }
 
   SET_NO_MEMORY_INFO()
@@ -123,6 +119,11 @@ class ProcessWrap : public HandleWrap {
       } else if (type->StrictEquals(env->pipe_string())) {
         options->stdio[i].flags = static_cast<uv_stdio_flags>(
             UV_CREATE_PIPE | UV_READABLE_PIPE | UV_WRITABLE_PIPE);
+        options->stdio[i].data.stream = StreamForWrap(env, stdio);
+      } else if (type->StrictEquals(env->overlapped_string())) {
+        options->stdio[i].flags = static_cast<uv_stdio_flags>(
+            UV_CREATE_PIPE | UV_READABLE_PIPE | UV_WRITABLE_PIPE |
+            UV_OVERLAPPED_PIPE);
         options->stdio[i].data.stream = StreamForWrap(env, stdio);
       } else if (type->StrictEquals(env->wrap_string())) {
         options->stdio[i].flags = UV_INHERIT_STREAM;
@@ -237,6 +238,10 @@ class ProcessWrap : public HandleWrap {
       options.flags |= UV_PROCESS_WINDOWS_HIDE;
     }
 
+    if (env->hide_console_windows()) {
+      options.flags |= UV_PROCESS_WINDOWS_HIDE_CONSOLE;
+    }
+
     // options.windows_verbatim_arguments
     Local<Value> wva_v =
         js_options->Get(context, env->windows_verbatim_arguments_string())
@@ -291,8 +296,7 @@ class ProcessWrap : public HandleWrap {
   static void OnExit(uv_process_t* handle,
                      int64_t exit_status,
                      int term_signal) {
-    ProcessWrap* wrap = static_cast<ProcessWrap*>(handle->data);
-    CHECK_NOT_NULL(wrap);
+    ProcessWrap* wrap = ContainerOf(&ProcessWrap::process_, handle);
     CHECK_EQ(&wrap->process_, handle);
 
     Environment* env = wrap->env();

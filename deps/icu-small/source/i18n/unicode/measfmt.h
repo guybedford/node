@@ -15,6 +15,8 @@
 
 #include "unicode/utypes.h"
 
+#if U_SHOW_CPLUSPLUS_API
+
 #if !UCONFIG_NO_FORMATTING
 
 #include "unicode/format.h"
@@ -89,7 +91,8 @@ class DateFormat;
 /**
  * <p><strong>IMPORTANT:</strong> New users are strongly encouraged to see if
  * numberformatter.h fits their use case.  Although not deprecated, this header
- * is provided for backwards compatibility only.
+ * is provided for backwards compatibility only, and has much more limited
+ * capabilities.
  *
  * @see Format
  * @author Alan Liu
@@ -151,7 +154,7 @@ class U_I18N_API MeasureFormat : public Format {
      * Clones this object polymorphically.
      * @stable ICU 53
      */
-    virtual Format *clone() const;
+    virtual MeasureFormat *clone() const;
 
     /**
      * Formats object to produce a string.
@@ -163,6 +166,7 @@ class U_I18N_API MeasureFormat : public Format {
             FieldPosition &pos,
             UErrorCode &status) const;
 
+#ifndef U_FORCE_HIDE_DRAFT_API
     /**
      * Parse a string to produce an object. This implementation sets
      * status to U_UNSUPPORTED_ERROR.
@@ -173,6 +177,7 @@ class U_I18N_API MeasureFormat : public Format {
             const UnicodeString &source,
             Formattable &reslt,
             ParsePosition &pos) const;
+#endif  // U_FORCE_HIDE_DRAFT_API
 
     /**
      * Formats measure objects to produce a string. An example of such a
@@ -305,7 +310,7 @@ class U_I18N_API MeasureFormat : public Format {
     /**
      * ICU use only.
      * Allows subclass to change locale. Note that this method also changes
-     * the NumberFormat object. Returns TRUE if locale changed; FALSE if no
+     * the NumberFormat object. Returns true if locale changed; false if no
      * change was made.
      * @internal.
      */
@@ -382,17 +387,12 @@ class U_I18N_API MeasureFormat : public Format {
         int32_t bitMap,   // 1=hour set, 2=minute set, 4=second set
         UnicodeString &appendTo,
         UErrorCode &status) const;
-
-    UnicodeString &formatNumeric(
-        UDate date,
-        const DateFormat &dateFmt,
-        UDateFormatField smallestField,
-        const Formattable &smallestAmount,
-        UnicodeString &appendTo,
-        UErrorCode &status) const;
 };
 
 U_NAMESPACE_END
 
 #endif // #if !UCONFIG_NO_FORMATTING
+
+#endif /* U_SHOW_CPLUSPLUS_API */
+
 #endif // #ifndef MEASUREFORMAT_H

@@ -25,6 +25,7 @@
 #include "env-inl.h"
 #include "handle_wrap.h"
 #include "node_buffer.h"
+#include "node_external_reference.h"
 #include "pipe_wrap.h"
 #include "req_wrap-inl.h"
 #include "tcp_wrap.h"
@@ -46,10 +47,15 @@ using v8::HandleScope;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
+using v8::PropertyAttribute;
 using v8::ReadOnly;
 using v8::Signature;
 using v8::Value;
 
+void IsConstructCallCallback(const FunctionCallbackInfo<Value>& args) {
+  CHECK(args.IsConstructCall());
+  StreamReq::ResetObject(args.This());
+}
 
 void LibuvStreamWrap::Initialize(Local<Object> target,
                                  Local<Value> unused,
@@ -57,18 +63,9 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
                                  void* priv) {
   Environment* env = Environment::GetCurrent(context);
 
-  auto is_construct_call_callback =
-      [](const FunctionCallbackInfo<Value>& args) {
-    CHECK(args.IsConstructCall());
-    StreamReq::ResetObject(args.This());
-  };
   Local<FunctionTemplate> sw =
-      FunctionTemplate::New(env->isolate(), is_construct_call_callback);
-  sw->InstanceTemplate()->SetInternalFieldCount(
-      StreamReq::kStreamReqField + 1 + 3);
-  Local<String> wrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "ShutdownWrap");
-  sw->SetClassName(wrapString);
+      FunctionTemplate::New(env->isolate(), IsConstructCallCallback);
+  sw->InstanceTemplate()->SetInternalFieldCount(StreamReq::kInternalFieldCount);
 
   // we need to set handle and callback to null,
   // so that those fields are created and functions
@@ -78,7 +75,7 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
   // - callback
   // - handle
   sw->InstanceTemplate()->Set(
-      FIXED_ONE_BYTE_STRING(env->isolate(), "oncomplete"),
+      env->oncomplete_string(),
       v8::Null(env->isolate()));
   sw->InstanceTemplate()->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "callback"),
       v8::Null(env->isolate()));
@@ -87,21 +84,15 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
 
   sw->Inherit(AsyncWrap::GetConstructorTemplate(env));
 
-  target->Set(env->context(),
-              wrapString,
-              sw->GetFunction(env->context()).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "ShutdownWrap", sw);
   env->set_shutdown_wrap_template(sw->InstanceTemplate());
 
   Local<FunctionTemplate> ww =
-      FunctionTemplate::New(env->isolate(), is_construct_call_callback);
-  ww->InstanceTemplate()->SetInternalFieldCount(StreamReq::kStreamReqField + 1);
-  Local<String> writeWrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "WriteWrap");
-  ww->SetClassName(writeWrapString);
+      FunctionTemplate::New(env->isolate(), IsConstructCallCallback);
+  ww->InstanceTemplate()->SetInternalFieldCount(
+      StreamReq::kInternalFieldCount);
   ww->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  target->Set(env->context(),
-              writeWrapString,
-              ww->GetFunction(env->context()).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "WriteWrap", ww);
   env->set_write_wrap_template(ww->InstanceTemplate());
 
   NODE_DEFINE_CONSTANT(target, kReadBytesOrError);
@@ -112,6 +103,14 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
               env->stream_base_state().GetJSArray()).Check();
 }
 
+void LibuvStreamWrap::RegisterExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(IsConstructCallCallback);
+  registry->Register(GetWriteQueueSize);
+  registry->Register(SetBlocking);
+  // TODO(joyee): StreamBase::RegisterExternalReferences() is called somewhere
+  // else but we may want to do it here too and guard it with a static flag.
+}
 
 LibuvStreamWrap::LibuvStreamWrap(Environment* env,
                                  Local<Object> object,
@@ -136,11 +135,11 @@ Local<FunctionTemplate> LibuvStreamWrap::GetConstructorTemplate(
         FIXED_ONE_BYTE_STRING(env->isolate(), "LibuvStreamWrap"));
     tmpl->Inherit(HandleWrap::GetConstructorTemplate(env));
     tmpl->InstanceTemplate()->SetInternalFieldCount(
-        StreamBase::kStreamBaseFieldCount);
+        StreamBase::kInternalFieldCount);
     Local<FunctionTemplate> get_write_queue_size =
         FunctionTemplate::New(env->isolate(),
                               GetWriteQueueSize,
-                              env->as_callback_data(),
+                              Local<Value>(),
                               Signature::New(env->isolate(), tmpl));
     tmpl->PrototypeTemplate()->SetAccessorProperty(
         env->write_queue_size_string(),
@@ -405,3 +404,5 @@ void LibuvStreamWrap::AfterUvWrite(uv_write_t* req, int status) {
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(stream_wrap,
                                    node::LibuvStreamWrap::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(
+    stream_wrap, node::LibuvStreamWrap::RegisterExternalReferences)

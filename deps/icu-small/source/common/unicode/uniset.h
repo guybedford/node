@@ -13,6 +13,10 @@
 #ifndef UNICODESET_H
 #define UNICODESET_H
 
+#include "unicode/utypes.h"
+
+#if U_SHOW_CPLUSPLUS_API
+
 #include "unicode/ucpmap.h"
 #include "unicode/unifilt.h"
 #include "unicode/unistr.h"
@@ -174,8 +178,6 @@ class RuleCharacterIterator;
  * Unicode property
  * </table>
  *
- * <p><b>Warning</b>: you cannot add an empty string ("") to a UnicodeSet.</p>
- *
  * <p><b>Formal syntax</b></p>
  *
  * \htmlonly<blockquote>\endhtmlonly
@@ -321,7 +323,7 @@ public:
      * A bogus set has no value. It is different from an empty set.
      * It can be used to indicate that no set value is available.
      *
-     * @return TRUE if the set is bogus/invalid, FALSE otherwise
+     * @return true if the set is bogus/invalid, false otherwise
      * @see setToBogus()
      * @stable ICU 4.0
      */
@@ -329,7 +331,7 @@ public:
 
     /**
      * Make this UnicodeSet object invalid.
-     * The string will test TRUE with isBogus().
+     * The string will test true with isBogus().
      *
      * A bogus set has no value. It is different from an empty set.
      * It can be used to indicate that no set value is available.
@@ -501,7 +503,7 @@ public:
      * @see cloneAsThawed
      * @stable ICU 2.0
      */
-    virtual UnicodeFunctor* clone() const;
+    virtual UnicodeSet* clone() const;
 
     /**
      * Returns the hash code value for this set.
@@ -559,7 +561,7 @@ public:
     /**
      * Determines whether the set has been frozen (made immutable) or not.
      * See the ICU4J Freezable interface for details.
-     * @return TRUE/FALSE for whether the set has been frozen
+     * @return true/false for whether the set has been frozen
      * @see freeze
      * @see cloneAsThawed
      * @stable ICU 3.8
@@ -579,7 +581,7 @@ public:
      * @see cloneAsThawed
      * @stable ICU 3.8
      */
-    UnicodeFunctor *freeze();
+    UnicodeSet *freeze();
 
     /**
      * Clone the set and make the clone mutable.
@@ -589,7 +591,7 @@ public:
      * @see isFrozen
      * @stable ICU 3.8
      */
-    UnicodeFunctor *cloneAsThawed() const;
+    UnicodeSet *cloneAsThawed() const;
 
     //----------------------------------------------------------------
     // Public API
@@ -597,7 +599,7 @@ public:
 
     /**
      * Make this object represent the range `start - end`.
-     * If `end > start` then this object is set to an empty range.
+     * If `start > end` then this object is set to an empty range.
      * A frozen set will not be modified.
      *
      * @param start first character in the set, inclusive
@@ -696,14 +698,14 @@ public:
      * A frozen set will not be modified.
      * @param result the string to receive the rules.  Previous
      * contents will be deleted.
-     * @param escapeUnprintable if TRUE then convert unprintable
+     * @param escapeUnprintable if true then convert unprintable
      * character to their hex escape representations, \\uxxxx or
      * \\Uxxxxxxxx.  Unprintable characters are those other than
      * U+000A, U+0020..U+007E.
      * @stable ICU 2.0
      */
     virtual UnicodeString& toPattern(UnicodeString& result,
-                             UBool escapeUnprintable = FALSE) const;
+                                     UBool escapeUnprintable = false) const;
 
     /**
      * Modifies this set to contain those code points which have the given value
@@ -1073,7 +1075,7 @@ public:
     /**
      * Adds the specified range to this set if it is not already
      * present.  If this set already contains the specified range,
-     * the call leaves this set unchanged.  If <code>end > start</code>
+     * the call leaves this set unchanged.  If <code>start > end</code>
      * then an empty range is added, leaving the set unchanged.
      * This is equivalent to a boolean logic OR, or a set UNION.
      * A frozen set will not be modified.
@@ -1091,6 +1093,9 @@ public:
      * present.  If this set already contains the specified character,
      * the call leaves this set unchanged.
      * A frozen set will not be modified.
+     *
+     * @param c the character (code point)
+     * @return this object, for chaining
      * @stable ICU 2.0
      */
     UnicodeSet& add(UChar32 c);
@@ -1100,8 +1105,8 @@ public:
      * present.  If this set already contains the multicharacter,
      * the call leaves this set unchanged.
      * Thus "ch" => {"ch"}
-     * <br><b>Warning: you cannot add an empty string ("") to a UnicodeSet.</b>
      * A frozen set will not be modified.
+     *
      * @param s the source string
      * @return this object, for chaining
      * @stable ICU 2.4
@@ -1120,8 +1125,8 @@ public:
 
  public:
     /**
-     * Adds each of the characters in this string to the set. Thus "ch" => {"c", "h"}
-     * If this set already any particular character, it has no effect on that character.
+     * Adds each of the characters in this string to the set. Note: "ch" => {"c", "h"}
+     * If this set already contains any particular character, it has no effect on that character.
      * A frozen set will not be modified.
      * @param s the source string
      * @return this object, for chaining
@@ -1131,7 +1136,6 @@ public:
 
     /**
      * Retains EACH of the characters in this string. Note: "ch" == {"c", "h"}
-     * If this set already any particular character, it has no effect on that character.
      * A frozen set will not be modified.
      * @param s the source string
      * @return this object, for chaining
@@ -1141,7 +1145,6 @@ public:
 
     /**
      * Complement EACH of the characters in this string. Note: "ch" == {"c", "h"}
-     * If this set already any particular character, it has no effect on that character.
      * A frozen set will not be modified.
      * @param s the source string
      * @return this object, for chaining
@@ -1151,7 +1154,6 @@ public:
 
     /**
      * Remove EACH of the characters in this string. Note: "ch" == {"c", "h"}
-     * If this set already any particular character, it has no effect on that character.
      * A frozen set will not be modified.
      * @param s the source string
      * @return this object, for chaining
@@ -1161,7 +1163,7 @@ public:
 
     /**
      * Makes a set from a multicharacter string. Thus "ch" => {"ch"}
-     * <br><b>Warning: you cannot add an empty string ("") to a UnicodeSet.</b>
+     *
      * @param s the source string
      * @return a newly created set containing the given string.
      * The caller owns the return object and is responsible for deleting it.
@@ -1181,15 +1183,13 @@ public:
 
     /**
      * Retain only the elements in this set that are contained in the
-     * specified range.  If <code>end > start</code> then an empty range is
+     * specified range.  If <code>start > end</code> then an empty range is
      * retained, leaving the set empty.  This is equivalent to
      * a boolean logic AND, or a set INTERSECTION.
      * A frozen set will not be modified.
      *
-     * @param start first character, inclusive, of range to be retained
-     * to this set.
-     * @param end last character, inclusive, of range to be retained
-     * to this set.
+     * @param start first character, inclusive, of range
+     * @param end last character, inclusive, of range
      * @stable ICU 2.0
      */
     virtual UnicodeSet& retain(UChar32 start, UChar32 end);
@@ -1198,14 +1198,31 @@ public:
     /**
      * Retain the specified character from this set if it is present.
      * A frozen set will not be modified.
+     *
+     * @param c the character (code point)
+     * @return this object, for chaining
      * @stable ICU 2.0
      */
     UnicodeSet& retain(UChar32 c);
 
+#ifndef U_HIDE_DRAFT_API
+    /**
+     * Retains only the specified string from this set if it is present.
+     * Upon return this set will be empty if it did not contain s, or
+     * will only contain s if it did contain s.
+     * A frozen set will not be modified.
+     *
+     * @param s the source string
+     * @return this object, for chaining
+     * @draft ICU 69
+     */
+    UnicodeSet& retain(const UnicodeString &s);
+#endif  // U_HIDE_DRAFT_API
+
     /**
      * Removes the specified range from this set if it is present.
      * The set will not contain the specified range once the call
-     * returns.  If <code>end > start</code> then an empty range is
+     * returns.  If <code>start > end</code> then an empty range is
      * removed, leaving the set unchanged.
      * A frozen set will not be modified.
      *
@@ -1222,6 +1239,9 @@ public:
      * The set will not contain the specified range once the call
      * returns.
      * A frozen set will not be modified.
+     *
+     * @param c the character (code point)
+     * @return this object, for chaining
      * @stable ICU 2.0
      */
     UnicodeSet& remove(UChar32 c);
@@ -1249,15 +1269,13 @@ public:
     /**
      * Complements the specified range in this set.  Any character in
      * the range will be removed if it is in this set, or will be
-     * added if it is not in this set.  If <code>end > start</code>
+     * added if it is not in this set.  If <code>start > end</code>
      * then an empty range is complemented, leaving the set unchanged.
      * This is equivalent to a boolean logic XOR.
      * A frozen set will not be modified.
      *
-     * @param start first character, inclusive, of range to be removed
-     * from this set.
-     * @param end last character, inclusive, of range to be removed
-     * from this set.
+     * @param start first character, inclusive, of range
+     * @param end last character, inclusive, of range
      * @stable ICU 2.0
      */
     virtual UnicodeSet& complement(UChar32 start, UChar32 end);
@@ -1267,16 +1285,18 @@ public:
      * will be removed if it is in this set, or will be added if it is
      * not in this set.
      * A frozen set will not be modified.
+     *
+     * @param c the character (code point)
+     * @return this object, for chaining
      * @stable ICU 2.0
      */
     UnicodeSet& complement(UChar32 c);
 
     /**
      * Complement the specified string in this set.
-     * The set will not contain the specified string once the call
-     * returns.
-     * <br><b>Warning: you cannot add an empty string ("") to a UnicodeSet.</b>
+     * The string will be removed if it is in this set, or will be added if it is not in this set.
      * A frozen set will not be modified.
+     *
      * @param s the string to complement
      * @return this object, for chaining
      * @stable ICU 2.4
@@ -1632,7 +1652,7 @@ private:
     static const UnicodeSet* getInclusions(int32_t src, UErrorCode &status);
 
     /**
-     * A filter that returns TRUE if the given code point should be
+     * A filter that returns true if the given code point should be
      * included in the UnicodeSet being constructed.
      */
     typedef UBool (*Filter)(UChar32 codePoint, void* context);
@@ -1651,11 +1671,10 @@ private:
                      const UnicodeSet* inclusions,
                      UErrorCode &status);
 
-#ifndef U_HIDE_DRAFT_API   // Skipped: ucpmap.h is draft only.
+    // UCPMap is now stable ICU 63
     void applyIntPropertyValue(const UCPMap *map,
                                UCPMapValueFilter *filter, const void *context,
                                UErrorCode &errorCode);
-#endif  /* U_HIDE_DRAFT_API */
 
     /**
      * Set the new pattern to cache.
@@ -1735,5 +1754,7 @@ inline int32_t UnicodeSet::spanBack(const UnicodeString &s, int32_t limit, USetS
 }
 
 U_NAMESPACE_END
+
+#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

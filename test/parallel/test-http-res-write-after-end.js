@@ -27,15 +27,15 @@ const http = require('http');
 const server = http.Server(common.mustCall(function(req, res) {
   res.on('error', common.expectsError({
     code: 'ERR_STREAM_WRITE_AFTER_END',
-    type: Error
+    name: 'Error'
   }));
 
   res.write('This should write.');
   res.end();
 
   const r = res.write('This should raise an error.');
-  // Write after end should return true
-  assert.strictEqual(r, true);
+  // Write after end should return false
+  assert.strictEqual(r, false);
 }));
 
 server.listen(0, function() {

@@ -1,5 +1,0 @@
-prefix addons
-
-[true] # This section applies to all platforms
-
-[$system==aix]

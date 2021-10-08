@@ -1,8 +1,7 @@
 'use strict';
 
-const common = require('../common');
+require('../common');
 const assert = require('assert');
-const URLSearchParams = require('url').URLSearchParams;
 
 // Tests below are not from WPT.
 const params = new URLSearchParams('a=b&c=d');
@@ -26,17 +25,17 @@ assert.deepStrictEqual(entries.next(), {
   done: true
 });
 
-common.expectsError(() => {
+assert.throws(() => {
   entries.next.call(undefined);
 }, {
   code: 'ERR_INVALID_THIS',
-  type: TypeError,
+  name: 'TypeError',
   message: 'Value of "this" must be of type URLSearchParamsIterator'
 });
-common.expectsError(() => {
+assert.throws(() => {
   params.entries.call(undefined);
 }, {
   code: 'ERR_INVALID_THIS',
-  type: TypeError,
+  name: 'TypeError',
   message: 'Value of "this" must be of type URLSearchParams'
 });

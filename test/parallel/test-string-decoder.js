@@ -173,33 +173,42 @@ assert.strictEqual(decoder.write(Buffer.from('f4', 'hex')), '');
 assert.strictEqual(decoder.write(Buffer.from('bde5', 'hex')), '\ufffd\ufffd');
 assert.strictEqual(decoder.end(), '\ufffd');
 
-common.expectsError(
+assert.throws(
   () => new StringDecoder(1),
   {
     code: 'ERR_UNKNOWN_ENCODING',
-    type: TypeError,
+    name: 'TypeError',
     message: 'Unknown encoding: 1'
   }
 );
 
-common.expectsError(
+assert.throws(
   () => new StringDecoder('test'),
   {
     code: 'ERR_UNKNOWN_ENCODING',
-    type: TypeError,
+    name: 'TypeError',
     message: 'Unknown encoding: test'
   }
 );
 
-common.expectsError(
+assert.throws(
   () => new StringDecoder('utf8').write(null),
   {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError,
-    message: 'The "buf" argument must be one of type Buffer, TypedArray,' +
-      ' or DataView. Received type object'
+    name: 'TypeError',
+    message: 'The "buf" argument must be an instance of Buffer, TypedArray,' +
+      ' or DataView. Received null'
   }
 );
+
+if (common.enoughTestMem) {
+  assert.throws(
+    () => new StringDecoder().write(Buffer.alloc(0x1fffffe8 + 1).fill('a')),
+    {
+      code: 'ERR_STRING_TOO_LONG',
+    }
+  );
+}
 
 // Test verifies that StringDecoder will correctly decode the given input
 // buffer with the given encoding to the expected output. It will attempt all

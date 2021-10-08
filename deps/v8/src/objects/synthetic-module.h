@@ -13,6 +13,8 @@
 namespace v8 {
 namespace internal {
 
+#include "torque-generated/src/objects/synthetic-module-tq.inc"
+
 // The runtime representation of a Synthetic Module Record, a module that can be
 // instantiated by an embedder with embedder-defined exports and evaluation
 // steps.
@@ -24,13 +26,25 @@ class SyntheticModule
   DECL_VERIFIER(SyntheticModule)
   DECL_PRINTER(SyntheticModule)
 
-  static void SetExport(Isolate* isolate, Handle<SyntheticModule> module,
-                        Handle<String> export_name,
-                        Handle<Object> export_value);
+  // Set module's exported value for the specified export_name to the specified
+  // export_value.  An error will be thrown if export_name is not one
+  // of the export_names that were supplied during module construction.
+  // Returns Just(true) on success, Nothing<bool>() if an error was thrown.
+  static Maybe<bool> SetExport(Isolate* isolate, Handle<SyntheticModule> module,
+                               Handle<String> export_name,
+                               Handle<Object> export_value);
+  // The following redundant method should be deleted when the deprecated
+  // version of v8::SetSyntheticModuleExport is removed.  It differs from
+  // SetExport in that it crashes rather than throwing an error if the caller
+  // attempts to set an export_name that was not present during construction of
+  // the module.
+  static void SetExportStrict(Isolate* isolate, Handle<SyntheticModule> module,
+                              Handle<String> export_name,
+                              Handle<Object> export_value);
 
-  using BodyDescriptor = SubclassBodyDescriptor<
-      Module::BodyDescriptor,
-      FixedBodyDescriptor<kExportNamesOffset, kSize, kSize>>;
+  using BodyDescriptor =
+      SubclassBodyDescriptor<Module::BodyDescriptor,
+                             FixedBodyDescriptor<kNameOffset, kSize, kSize>>;
 
  private:
   friend class Module;
@@ -42,7 +56,7 @@ class SyntheticModule
 
   static V8_WARN_UNUSED_RESULT bool PrepareInstantiate(
       Isolate* isolate, Handle<SyntheticModule> module,
-      v8::Local<v8::Context> context, v8::Module::ResolveCallback callback);
+      v8::Local<v8::Context> context);
   static V8_WARN_UNUSED_RESULT bool FinishInstantiate(
       Isolate* isolate, Handle<SyntheticModule> module);
 

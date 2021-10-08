@@ -6,7 +6,6 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const URL = require('url').URL;
 
 function pathToFileURL(p) {
   if (!path.isAbsolute(p))
@@ -22,21 +21,20 @@ const url = pathToFileURL(p);
 assert(url instanceof URL);
 
 // Check that we can pass in a URL object successfully
-fs.readFile(url, common.mustCall((err, data) => {
-  assert.ifError(err);
+fs.readFile(url, common.mustSucceed((data) => {
   assert(Buffer.isBuffer(data));
 }));
 
 // Check that using a non file:// URL reports an error
 const httpUrl = new URL('http://example.org');
 
-common.expectsError(
+assert.throws(
   () => {
     fs.readFile(httpUrl, common.mustNotCall());
   },
   {
     code: 'ERR_INVALID_URL_SCHEME',
-    type: TypeError,
+    name: 'TypeError',
     message: 'The URL must be of scheme file'
   });
 
@@ -44,60 +42,60 @@ common.expectsError(
 if (common.isWindows) {
   // Encoded back and forward slashes are not permitted on windows
   ['%2f', '%2F', '%5c', '%5C'].forEach((i) => {
-    common.expectsError(
+    assert.throws(
       () => {
         fs.readFile(new URL(`file:///c:/tmp/${i}`), common.mustNotCall());
       },
       {
         code: 'ERR_INVALID_FILE_URL_PATH',
-        type: TypeError,
+        name: 'TypeError',
         message: 'File URL path must not include encoded \\ or / characters'
       }
     );
   });
-  common.expectsError(
+  assert.throws(
     () => {
       fs.readFile(new URL('file:///c:/tmp/%00test'), common.mustNotCall());
     },
     {
       code: 'ERR_INVALID_ARG_VALUE',
-      type: TypeError,
+      name: 'TypeError',
       message: 'The argument \'path\' must be a string or Uint8Array without ' +
-               'null bytes. Received \'c:\\\\tmp\\\\\\u0000test\''
+               "null bytes. Received 'c:\\\\tmp\\\\\\x00test'"
     }
   );
 } else {
   // Encoded forward slashes are not permitted on other platforms
   ['%2f', '%2F'].forEach((i) => {
-    common.expectsError(
+    assert.throws(
       () => {
         fs.readFile(new URL(`file:///c:/tmp/${i}`), common.mustNotCall());
       },
       {
         code: 'ERR_INVALID_FILE_URL_PATH',
-        type: TypeError,
+        name: 'TypeError',
         message: 'File URL path must not include encoded / characters'
       });
   });
-  common.expectsError(
+  assert.throws(
     () => {
       fs.readFile(new URL('file://hostname/a/b/c'), common.mustNotCall());
     },
     {
       code: 'ERR_INVALID_FILE_URL_HOST',
-      type: TypeError,
+      name: 'TypeError',
       message: `File URL host must be "localhost" or empty on ${os.platform()}`
     }
   );
-  common.expectsError(
+  assert.throws(
     () => {
       fs.readFile(new URL('file:///tmp/%00test'), common.mustNotCall());
     },
     {
       code: 'ERR_INVALID_ARG_VALUE',
-      type: TypeError,
-      message: 'The argument \'path\' must be a string or Uint8Array without ' +
-               'null bytes. Received \'/tmp/\\u0000test\''
+      name: 'TypeError',
+      message: "The argument 'path' must be a string or Uint8Array without " +
+               "null bytes. Received '/tmp/\\x00test'"
     }
   );
 }

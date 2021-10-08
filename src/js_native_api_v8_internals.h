@@ -16,6 +16,7 @@
 #include "node_version.h"
 #include "env.h"
 #include "node_internals.h"
+#include "gtest/gtest_prod.h"
 
 #define NAPI_ARRAYSIZE(array) \
   node::arraysize((array))
@@ -27,45 +28,6 @@
   (node::Environment::GetCurrent((context))->napi_ ## suffix())
 
 namespace v8impl {
-
-class RefTracker {
- public:
-  RefTracker() {}
-  virtual ~RefTracker() {}
-  virtual void Finalize(bool isEnvTeardown) {}
-
-  typedef RefTracker RefList;
-
-  inline void Link(RefList* list) {
-    prev_ = list;
-    next_ = list->next_;
-    if (next_ != nullptr) {
-      next_->prev_ = this;
-    }
-    list->next_ = this;
-  }
-
-  inline void Unlink() {
-    if (prev_ != nullptr) {
-      prev_->next_ = next_;
-    }
-    if (next_ != nullptr) {
-      next_->prev_ = prev_;
-    }
-    prev_ = nullptr;
-    next_ = nullptr;
-  }
-
-  static void FinalizeAll(RefList* list) {
-    while (list->next_ != nullptr) {
-      list->next_->Finalize(true);
-    }
-  }
-
- private:
-  RefList* next_ = nullptr;
-  RefList* prev_ = nullptr;
-};
 
 template <typename T>
 using Persistent = v8::Global<T>;

@@ -15,6 +15,15 @@ if /i "%1"=="/?" goto help
 
 cd %~dp0
 
+set JS_SUITES=default
+set NATIVE_SUITES=addons js-native-api node-api
+@rem CI_* variables should be kept synchronized with the ones in Makefile
+set "CI_NATIVE_SUITES=%NATIVE_SUITES% benchmark"
+set "CI_JS_SUITES=%JS_SUITES% pummel"
+set CI_DOC=doctool
+@rem Same as the test-ci target in Makefile
+set "common_test_suites=%JS_SUITES% %NATIVE_SUITES%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
+
 @rem Process arguments.
 set config=Release
 set target=Build
@@ -42,7 +51,6 @@ set noetw_msi_arg=
 set i18n_arg=
 set download_arg=
 set build_release=
-set enable_vtune_arg=
 set configure_flags=
 set build_addons=
 set dll=
@@ -51,10 +59,8 @@ set build_js_native_api_tests=
 set build_node_api_tests=
 set test_node_inspect=
 set test_check_deopts=
-set js_test_suites=default
 set v8_test_options=
 set v8_build_options=
-set "common_test_suites=%js_test_suites% doctool addons js-native-api node-api&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
 set http2_debug=
 set nghttp2_debug=
 set link_module=
@@ -63,6 +69,7 @@ set cctest=
 set openssl_no_asm=
 set doc=
 set extra_msbuild_args=
+set exit_code=0
 
 :next-arg
 if "%1"=="" goto args-done
@@ -74,8 +81,8 @@ if /i "%1"=="ia32"          set target_arch=x86&goto arg-ok
 if /i "%1"=="x86"           set target_arch=x86&goto arg-ok
 if /i "%1"=="x64"           set target_arch=x64&goto arg-ok
 if /i "%1"=="arm64"         set target_arch=arm64&goto arg-ok
-if /i "%1"=="vs2017"        set target_env=vs2017&goto arg-ok
 if /i "%1"=="vs2019"        set target_env=vs2019&goto arg-ok
+if /i "%1"=="vs2022"        set target_env=vs2022&goto arg-ok
 if /i "%1"=="noprojgen"     set noprojgen=1&goto arg-ok
 if /i "%1"=="projgen"       set projgen=1&goto arg-ok
 if /i "%1"=="nobuild"       set nobuild=1&goto arg-ok
@@ -86,12 +93,13 @@ if /i "%1"=="noetw"         set noetw=1&goto arg-ok
 if /i "%1"=="ltcg"          set ltcg=1&goto arg-ok
 if /i "%1"=="licensertf"    set licensertf=1&goto arg-ok
 if /i "%1"=="test"          set test_args=%test_args% -J %common_test_suites%&set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
-:: test-ci is deprecated
-if /i "%1"=="test-ci"       goto arg-ok
+if /i "%1"=="test-ci-native" set test_args=%test_args% %test_ci_args% -J -p tap --logfile test.tap %CI_NATIVE_SUITES% %CI_DOC%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1&set cctest_args=%cctest_args% --gtest_output=xml:cctest.junit.xml&goto arg-ok
+if /i "%1"=="test-ci-js"    set test_args=%test_args% %test_ci_args% -J -p tap --logfile test.tap %CI_JS_SUITES%&set no_cctest=1&goto arg-ok
 if /i "%1"=="build-addons"   set build_addons=1&goto arg-ok
 if /i "%1"=="build-js-native-api-tests"   set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="build-node-api-tests"   set build_node_api_tests=1&goto arg-ok
 if /i "%1"=="test-addons"   set test_args=%test_args% addons&set build_addons=1&goto arg-ok
+if /i "%1"=="test-doc"      set test_args=%test_args% %CI_DOC%&set doc=1&&set lint_js=1&set lint_md=1&goto arg-ok
 if /i "%1"=="test-js-native-api"   set test_args=%test_args% js-native-api&set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="test-node-api"   set test_args=%test_args% node-api&set build_node_api_tests=1&goto arg-ok
 if /i "%1"=="test-benchmark" set test_args=%test_args% benchmark&goto arg-ok
@@ -113,8 +121,6 @@ if /i "%1"=="test-v8-all"       set test_v8=1&set test_v8_intl=1&set test_v8_ben
 if /i "%1"=="lint-cpp"      set lint_cpp=1&goto arg-ok
 if /i "%1"=="lint-js"       set lint_js=1&goto arg-ok
 if /i "%1"=="jslint"        set lint_js=1&echo Please use lint-js instead of jslint&goto arg-ok
-if /i "%1"=="lint-js-ci"    set lint_js_ci=1&goto arg-ok
-if /i "%1"=="jslint-ci"     set lint_js_ci=1&echo Please use lint-js-ci instead of jslint-ci&goto arg-ok
 if /i "%1"=="lint-md"       set lint_md=1&goto arg-ok
 if /i "%1"=="lint-md-build" set lint_md_build=1&goto arg-ok
 if /i "%1"=="lint"          set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
@@ -129,7 +135,6 @@ if /i "%1"=="intl-none"     set i18n_arg=none&goto arg-ok
 if /i "%1"=="without-intl"  set i18n_arg=none&goto arg-ok
 if /i "%1"=="download-all"  set download_arg="--download=all"&goto arg-ok
 if /i "%1"=="ignore-flaky"  set test_args=%test_args% --flaky-tests=dontcare&goto arg-ok
-if /i "%1"=="enable-vtune"  set enable_vtune_arg=1&goto arg-ok
 if /i "%1"=="dll"           set dll=1&goto arg-ok
 if /i "%1"=="static"           set enable_static=1&goto arg-ok
 if /i "%1"=="no-NODE-OPTIONS"	set no_NODE_OPTIONS=1&goto arg-ok
@@ -171,8 +176,8 @@ if defined package set stage_package=1
 set "node_exe=%config%\node.exe"
 set "node_gyp_exe="%node_exe%" deps\npm\node_modules\node-gyp\bin\node-gyp"
 set "npm_exe="%~dp0%node_exe%" %~dp0deps\npm\bin\npm-cli.js"
-if "%target_env%"=="vs2017" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2017"
 if "%target_env%"=="vs2019" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2019"
+if "%target_env%"=="vs2022" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2022"
 
 :: skip building if the only argument received was lint
 if "%*"=="lint" if exist "%node_exe%" goto lint-cpp
@@ -183,7 +188,6 @@ if defined noetw            set configure_flags=%configure_flags% --without-etw&
 if defined ltcg             set configure_flags=%configure_flags% --with-ltcg
 if defined release_urlbase  set configure_flags=%configure_flags% --release-urlbase=%release_urlbase%
 if defined download_arg     set configure_flags=%configure_flags% %download_arg%
-if defined enable_vtune_arg set configure_flags=%configure_flags% --enable-vtune-profiling
 if defined dll              set configure_flags=%configure_flags% --shared
 if defined enable_static    set configure_flags=%configure_flags% --enable-static
 if defined no_NODE_OPTIONS  set configure_flags=%configure_flags% --without-node-options
@@ -194,6 +198,7 @@ if defined target_arch      set configure_flags=%configure_flags% --dest-cpu=%ta
 if defined openssl_no_asm   set configure_flags=%configure_flags% --openssl-no-asm
 if defined DEBUG_HELPER     set configure_flags=%configure_flags% --verbose
 if "%target_arch%"=="x86" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set configure_flags=%configure_flags% --no-cross-compiling
+if "%target_arch%"=="arm64" set configure_flags=%configure_flags% --cross-compiling
 
 if not exist "%~dp0deps\icu" goto no-depsicu
 if "%target%"=="Clean" echo deleting %~dp0deps\icu
@@ -236,26 +241,31 @@ if %target_arch%==x64 if %msvs_host_arch%==amd64 set vcvarsall_arg=amd64
 @rem also if both are x86
 if %target_arch%==x86 if %msvs_host_arch%==x86 set vcvarsall_arg=x86
 
-@rem Look for Visual Studio 2017
-:vs-set-2017
-if defined target_env if "%target_env%" NEQ "vs2017" goto vs-set-2019
-echo Looking for Visual Studio 2017
-call tools\msvs\vswhere_usability_wrapper.cmd "[15.0,16.0)"
-if "_%VCINSTALLDIR%_" == "__" goto msbuild-not-found
+@rem Look for Visual Studio 2022
+:vs-set-2022
+if defined target_env if "%target_env%" NEQ "vs2022" goto vs-set-2019
+echo Looking for Visual Studio 2022
+@rem VCINSTALLDIR may be set if run from a VS Command Prompt and needs to be
+@rem cleared first as vswhere_usability_wrapper.cmd doesn't when it fails to
+@rem detect the version searched for
+if not defined target_env set "VCINSTALLDIR="
+call tools\msvs\vswhere_usability_wrapper.cmd "[17.0,18.0)" "prerelease"
+if "_%VCINSTALLDIR%_" == "__" goto vs-set-2019
+set "WIXSDKDIR=%WIX%\SDK\VS2017"
 if defined msi (
-  echo Looking for WiX installation for Visual Studio 2017...
-  if not exist "%WIX%\SDK\VS2017" (
-    echo Failed to find WiX install for Visual Studio 2017
-    echo VS2017 support for WiX is only present starting at version 3.11
-    goto msbuild-not-found
+  echo Looking for WiX installation for Visual Studio 2022...
+  if not exist "%WIXSDKDIR%" (
+    echo Failed to find WiX install for Visual Studio 2022
+    echo VS2022 support for WiX is only present starting at version 3.XX
+    goto vs-set-2019
   )
   if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
-    echo Failed to find the WiX Toolset Visual Studio 2017 Extension
-    goto msbuild-not-found
+    echo Failed to find the WiX Toolset Visual Studio 2022 Extension
+    goto vs-set-2019
   )
 )
-@rem check if VS2017 is already setup, and for the requested arch
-if "_%VisualStudioVersion%_" == "_15.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2017
+@rem check if VS2022 is already setup, and for the requested arch
+if "_%VisualStudioVersion%_" == "_17.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2022
 @rem need to clear VSINSTALLDIR for vcvarsall to work as expected
 set "VSINSTALLDIR="
 @rem prevent VsDevCmd.bat from changing the current working directory
@@ -263,23 +273,28 @@ set "VSCMD_START_DIR=%CD%"
 set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vcvarsall_arg%
 echo calling: %vcvars_call%
 call %vcvars_call%
-if errorlevel 1 goto msbuild-not-found
+if errorlevel 1 goto vs-set-2019
 if defined DEBUG_HELPER @ECHO ON
-:found_vs2017
+:found_vs2022
 echo Found MSVS version %VisualStudioVersion%
-set GYP_MSVS_VERSION=2017
-set PLATFORM_TOOLSET=v141
+set GYP_MSVS_VERSION=2022
+set PLATFORM_TOOLSET=v143
 goto msbuild-found
 
 @rem Look for Visual Studio 2019
 :vs-set-2019
 if defined target_env if "%target_env%" NEQ "vs2019" goto msbuild-not-found
 echo Looking for Visual Studio 2019
-call tools\msvs\vswhere_usability_wrapper.cmd "[16.0,17.0)"
+@rem VCINSTALLDIR may be set if run from a VS Command Prompt and needs to be
+@rem cleared first as vswhere_usability_wrapper.cmd doesn't when it fails to
+@rem detect the version searched for
+if not defined target_env set "VCINSTALLDIR="
+call tools\msvs\vswhere_usability_wrapper.cmd "[16.0,17.0)" "prerelease"
 if "_%VCINSTALLDIR%_" == "__" goto msbuild-not-found
+set "WIXSDKDIR=%WIX%\SDK\VS2017"
 if defined msi (
   echo Looking for WiX installation for Visual Studio 2019...
-  if not exist "%WIX%\SDK\VS2017" (
+  if not exist "%WIXSDKDIR%" (
     echo Failed to find WiX install for Visual Studio 2019
     echo VS2019 support for WiX is only present starting at version 3.11
     goto msbuild-not-found
@@ -309,7 +324,7 @@ goto msbuild-found
 :msbuild-not-found
 echo Failed to find a suitable Visual Studio installation.
 echo Try to run in a "Developer Command Prompt" or consult
-echo https://github.com/nodejs/node/blob/master/BUILDING.md#windows-1
+echo https://github.com/nodejs/node/blob/HEAD/BUILDING.md#windows
 goto exit
 
 :msbuild-found
@@ -322,7 +337,7 @@ if defined projgen goto run-configure
 if not exist node.sln goto run-configure
 if not exist .gyp_configure_stamp goto run-configure
 echo %configure_flags% > .tmp_gyp_configure_stamp
-where /R . /T *.gyp? >> .tmp_gyp_configure_stamp
+where /R . /T *.gyp* >> .tmp_gyp_configure_stamp
 fc .gyp_configure_stamp .tmp_gyp_configure_stamp >NUL 2>&1
 if errorlevel 1 goto run-configure
 
@@ -343,7 +358,7 @@ if not exist node.sln goto create-msvs-files-failed
 set project_generated=1
 echo Project files generated.
 echo %configure_flags% > .gyp_configure_stamp
-where /R . /T *.gyp? >> .gyp_configure_stamp
+where /R . /T *.gyp* >> .gyp_configure_stamp
 
 :msbuild
 @rem Skip build if requested.
@@ -362,6 +377,10 @@ if "%target%"=="Build" (
 )
 if "%target%"=="node" if exist "%config%\cctest.exe" del "%config%\cctest.exe"
 if defined msbuild_args set "extra_msbuild_args=%extra_msbuild_args% %msbuild_args%"
+@rem Setup env variables to use multiprocessor build
+set UseMultiToolTask=True
+set EnforceProcessCountAcrossBuilds=True
+set MultiProcMaxCount=%NUMBER_OF_PROCESSORS%
 msbuild node.sln %msbcpu% /t:%target% /p:Configuration=%config% /p:Platform=%msbplatform% /clp:NoItemAndPropertyList;Verbosity=minimal /nologo %extra_msbuild_args%
 if errorlevel 1 (
   if not defined project_generated echo Building Node with reused solution failed. To regenerate project files use "vcbuild projgen"
@@ -387,7 +406,26 @@ if errorlevel 1 echo Failed to sign exe&goto exit
 @rem Skip license.rtf generation if not requested.
 if not defined licensertf goto stage_package
 
-%node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+set "use_x64_node_exe=false"
+if "%target_arch%"=="arm64" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set "use_x64_node_exe=true"
+if "%use_x64_node_exe%"=="true" (
+  echo Cross-compilation to ARM64 detected. We'll use the x64 Node executable for license2rtf.
+  if not defined "%x64_node_exe%" set "x64_node_exe=temp-vcbuild\node-x64-cross-compiling.exe"
+  if not exist "%x64_node_exe%" (
+    echo Downloading x64 node.exe...
+    if not exist "temp-vcbuild" mkdir temp-vcbuild
+    powershell -c "Invoke-WebRequest -Uri 'https://nodejs.org/dist/latest/win-x64/node.exe' -OutFile 'temp-vcbuild\node-x64-cross-compiling.exe'"
+  )
+  if not exist "%x64_node_exe%" (
+    echo Could not find the Node executable at the given x64_node_exe path. Aborting.
+    set exit_code=1
+    goto exit
+  )
+  %x64_node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+) else (
+  %node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+)
+
 if errorlevel 1 echo Failed to generate license.rtf&goto exit
 
 :stage_package
@@ -409,6 +447,8 @@ copy /Y ..\CHANGELOG.md %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy CHANGELOG.md && goto package_error
 robocopy ..\deps\npm %TARGET_NAME%\node_modules\npm /e /xd test > nul
 if errorlevel 8 echo Cannot copy npm package && goto package_error
+robocopy ..\deps\corepack %TARGET_NAME%\node_modules\corepack /e /xd test > nul
+if errorlevel 8 echo Cannot copy corepack package && goto package_error
 copy /Y ..\deps\npm\bin\npm %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy npm && goto package_error
 copy /Y ..\deps\npm\bin\npm.cmd %TARGET_NAME%\ > nul
@@ -417,6 +457,10 @@ copy /Y ..\deps\npm\bin\npx %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy npx && goto package_error
 copy /Y ..\deps\npm\bin\npx.cmd %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy npx.cmd && goto package_error
+copy /Y ..\deps\corepack\shims\nodewin\corepack %TARGET_NAME%\ > nul
+if errorlevel 1 echo Cannot copy corepack && goto package_error
+copy /Y ..\deps\corepack\shims\nodewin\corepack.cmd %TARGET_NAME%\ > nul
+if errorlevel 1 echo Cannot copy corepack.cmd && goto package_error
 copy /Y ..\tools\msvs\nodevars.bat %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy nodevars.bat && goto package_error
 copy /Y ..\tools\msvs\install_tools\*.* %TARGET_NAME%\ > nul
@@ -464,7 +508,7 @@ if not defined msi goto install-doctools
 echo Building node-v%FULLVERSION%-%target_arch%.msi
 set "msbsdk="
 if defined WindowsSDKVersion set "msbsdk=/p:WindowsTargetPlatformVersion=%WindowsSDKVersion:~0,-1%"
-msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:GypMsvsVersion=%GYP_MSVS_VERSION% /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:WixSdkDir="%WIXSDKDIR%" /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 goto exit
 
 if not defined sign goto upload
@@ -530,7 +574,7 @@ robocopy /e doc\api %config%\doc\api
 robocopy /e doc\api_assets %config%\doc\api\assets
 
 for %%F in (%config%\doc\api\*.md) do (
-  %node_exe% tools\doc\generate.js --node-version=v%FULLVERSION% %%F --output-directory=%%~dF%%~pF
+  %node_exe% tools\doc\generate.mjs --node-version=v%FULLVERSION% %%F --output-directory=%%~dF%%~pF
 )
 
 :run
@@ -547,7 +591,7 @@ for /d %%F in (test\addons\??_*) do (
   rd /s /q %%F
 )
 :: generate
-"%node_exe%" tools\doc\addon-verify.js
+"%node_exe%" tools\doc\addon-verify.mjs
 if %errorlevel% neq 0 exit /b %errorlevel%
 :: building addons
 setlocal
@@ -624,9 +668,11 @@ if defined no_cctest echo Skipping cctest because no-cctest was specified && got
 if not exist "%config%\cctest.exe" echo cctest.exe not found. Run "vcbuild test" or "vcbuild cctest" to build it. && goto run-test-py
 echo running 'cctest %cctest_args%'
 "%config%\cctest" %cctest_args%
+if %errorlevel% neq 0 set exit_code=%errorlevel%
 :run-test-py
 echo running 'python tools\test.py %test_args%'
 python tools\test.py %test_args%
+if %errorlevel% neq 0 set exit_code=%errorlevel%
 goto test-v8
 
 :test-v8
@@ -650,16 +696,10 @@ goto lint-js
 goto lint-js
 
 :lint-js
-if defined lint_js_ci goto lint-js-ci
 if not defined lint_js goto lint-md-build
 if not exist tools\node_modules\eslint goto no-lint
 echo running lint-js
-%node_exe% tools\node_modules\eslint\bin\eslint.js --cache --report-unused-disable-directives --rule "linebreak-style: 0" --ext=.js,.mjs,.md .eslintrc.js benchmark doc lib test tools
-goto lint-md-build
-
-:lint-js-ci
-echo running lint-js-ci
-%node_exe% tools\lint-js.js -J -f tap -o test-eslint.tap benchmark doc lib test tools
+%node_exe% tools\node_modules\eslint\bin\eslint.js --cache --report-unused-disable-directives --rule "linebreak-style: 0" .eslintrc.js benchmark doc lib test tools
 goto lint-md-build
 
 :no-lint
@@ -682,34 +722,46 @@ for /D %%D IN (doc\*) do (
     set "lint_md_files="%%F" !lint_md_files!"
   )
 )
-%node_exe% tools\lint-md.js -q -f %lint_md_files%
+%node_exe% tools\lint-md\lint-md.mjs %lint_md_files%
+ENDLOCAL
+goto exit
+
+:format-md
+if not defined lint_md goto exit
+echo Running Markdown formatter on docs...
+SETLOCAL ENABLEDELAYEDEXPANSION
+set lint_md_files=
+for /D %%D IN (doc\*) do (
+  for %%F IN (%%D\*.md) do (
+    set "lint_md_files="%%F" !lint_md_files!"
+  )
+)
+%node_exe% tools\lint-md\lint-md.mjs --format %lint_md_files%
 ENDLOCAL
 goto exit
 
 :create-msvs-files-failed
 echo Failed to create vc project files.
-if %VCBUILD_PYTHON_VERSION%==3 (
-  echo Python 3 is not yet fully supported, to avoid issues Python 2 should be installed.
-)
 del .used_configure_flags
+set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-js-ci/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2019/vs2022] [download-all] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build
 echo   vcbuild.bat release msi              : builds release build and MSI installer package
 echo   vcbuild.bat test                     : builds debug build and runs tests
 echo   vcbuild.bat build-release            : builds the release distribution as used by nodejs.org
-echo   vcbuild.bat enable-vtune             : builds nodejs with Intel VTune profiling support to profile JavaScript
 echo   vcbuild.bat link-module my_module.js : bundles my_module as built-in module
 echo   vcbuild.bat lint                     : runs the C++, documentation and JavaScript linter
 echo   vcbuild.bat no-cctest                : skip building cctest.exe
 goto exit
 
 :exit
-goto :EOF
+if %errorlevel% neq 0 exit /b %errorlevel%
+exit /b %exit_code%
 
 
 rem ***************

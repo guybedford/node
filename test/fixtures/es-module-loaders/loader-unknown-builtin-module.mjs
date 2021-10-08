@@ -1,6 +1,7 @@
-export async function resolve(specifier, parent, defaultResolve) {
-  if (specifier === 'unknown-builtin-module') {
-    return { url: 'unknown-builtin-module', format: 'builtin' };
-  }
-  return defaultResolve(specifier, parent);
+export function resolve(specifier, context, next) {
+  if (specifier === 'unknown-builtin-module') return {
+    url: 'node:unknown-builtin-module'
+  };
+
+  return next(specifier, context, next);
 }

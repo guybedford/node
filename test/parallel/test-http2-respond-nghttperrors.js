@@ -28,7 +28,7 @@ const genericTests = Object.getOwnPropertyNames(constants)
     ngError: constants[key],
     error: {
       code: 'ERR_HTTP2_ERROR',
-      type: NghttpError,
+      constructor: NghttpError,
       name: 'Error',
       message: nghttp2ErrorString(constants[key])
     },
@@ -80,15 +80,16 @@ function runTest(test) {
   const req = client.request(headers);
   req.on('error', common.expectsError({
     code: 'ERR_HTTP2_STREAM_ERROR',
-    type: Error,
+    name: 'Error',
     message: 'Stream closed with error code NGHTTP2_INTERNAL_ERROR'
   }));
+  req.on('end', common.mustNotCall());
 
   currentError = test;
   req.resume();
   req.end();
 
-  req.on('end', common.mustCall(() => {
+  req.on('close', common.mustCall(() => {
     client.close();
 
     if (!tests.length) {

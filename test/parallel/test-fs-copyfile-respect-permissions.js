@@ -8,6 +8,9 @@ const common = require('../common');
 if (!common.isWindows && process.getuid() === 0)
   common.skip('as this test should not be run as `root`');
 
+if (common.isIBMi)
+  common.skip('IBMi has a different access permission mechanism');
+
 const tmpdir = require('../common/tmpdir');
 tmpdir.refresh();
 
@@ -46,7 +49,7 @@ function beforeEach() {
   const { source, dest, check } = beforeEach();
   (async () => {
     await assert.rejects(fs.promises.copyFile(source, dest), check);
-  })();
+  })().then(common.mustCall());
 }
 
 // Test callback API.

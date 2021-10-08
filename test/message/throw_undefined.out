@@ -3,3 +3,6 @@
 throw undefined;
 ^
 undefined
+(Use `* --trace-uncaught ...` to show where the exception was thrown)
+
+Node.js *

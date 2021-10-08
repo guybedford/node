@@ -5,6 +5,9 @@ const common = require('../common');
 // FIXME add sunos support
 if (common.isSunOS)
   common.skip(`Unsupported platform [${process.platform}]`);
+// FIXME add IBMi support
+if (common.isIBMi)
+  common.skip('Unsupported platform IBMi');
 if (!common.isMainThread)
   common.skip('Setting the process title from Workers is not supported');
 
@@ -31,8 +34,7 @@ const cmd = common.isLinux ?
   `ps -o pid,args | grep '${process.pid} ${title}' | grep -v grep` :
   `ps -p ${process.pid} -o args=`;
 
-exec(cmd, common.mustCall((error, stdout, stderr) => {
-  assert.ifError(error);
+exec(cmd, common.mustSucceed((stdout, stderr) => {
   assert.strictEqual(stderr, '');
 
   // Freebsd always add ' (procname)' to the process title

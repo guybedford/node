@@ -9,7 +9,7 @@ const BenchmarkProgress = require('./_benchmark_progress.js');
 //
 // Parse arguments
 //
-const cli = CLI(`usage: ./node compare.js [options] [--] <category> ...
+const cli = new CLI(`usage: ./node compare.js [options] [--] <category> ...
   Run each benchmark in the <category> directory many times using two different
   node versions. More than one <category> directory can be specified.
   The output is formatted as csv, which can be processed using for
@@ -18,10 +18,13 @@ const cli = CLI(`usage: ./node compare.js [options] [--] <category> ...
   --new      ./new-node-binary  new node binary (required)
   --old      ./old-node-binary  old node binary (required)
   --runs     30                 number of samples
-  --filter   pattern            string to filter benchmark scripts
+  --filter   pattern            includes only benchmark scripts matching
+                                <pattern> (can be repeated)
+  --exclude  pattern            excludes scripts matching <pattern> (can be
+                                repeated)
   --set      variable=value     set benchmark variable (can be repeated)
   --no-progress                 don't show benchmark progress indicator
-`, { arrayArgs: ['set'], boolArgs: ['no-progress'] });
+`, { arrayArgs: ['set', 'filter', 'exclude'], boolArgs: ['no-progress'] });
 
 if (!cli.optional.new || !cli.optional.old) {
   cli.abort(cli.usage);
@@ -53,7 +56,7 @@ for (const filename of benchmarks) {
 // queue.length = binary.length * runs * benchmarks.length
 
 // Print csv header
-console.log('"binary", "filename", "configuration", "rate", "time"');
+console.log('"binary","filename","configuration","rate","time"');
 
 const kStartOfQueue = 0;
 
@@ -82,8 +85,8 @@ if (showProgress) {
       // Escape quotes (") for correct csv formatting
       conf = conf.replace(/"/g, '""');
 
-      console.log(`"${job.binary}", "${job.filename}", "${conf}", ` +
-                  `${data.rate}, ${data.time}`);
+      console.log(`"${job.binary}","${job.filename}","${conf}",` +
+                  `${data.rate},${data.time}`);
       if (showProgress) {
         // One item in the subqueue has been completed.
         progress.completeConfig(data);

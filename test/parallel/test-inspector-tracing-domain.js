@@ -30,7 +30,7 @@ function post(message, data) {
 function generateTrace() {
   return new Promise((resolve) => setTimeout(() => {
     for (let i = 0; i < 1000000; i++) {
-      'test' + i;
+      'test' + i; // eslint-disable-line no-unused-expressions
     }
     resolve();
   }, 1));
@@ -66,4 +66,4 @@ async function test() {
   console.log('Success');
 }
 
-test();
+test().then(common.mustCall());

@@ -21,6 +21,9 @@
 
 'use strict';
 const common = require('../common');
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
+
 const assert = require('assert');
 
 const { execFileSync, execSync, spawnSync } = require('child_process');
@@ -84,7 +87,7 @@ const cmd = `"${process.execPath}" -e "console.log('${msg}');"`;
 
 const args = [
   '-e',
-  `console.log("${msg}");`
+  `console.log("${msg}");`,
 ];
 {
   const ret = execFileSync(process.execPath, args);
@@ -99,7 +102,7 @@ const args = [
 // Verify that the cwd option works.
 // See https://github.com/nodejs/node-v0.x-archive/issues/7824.
 {
-  const cwd = common.rootDir;
+  const cwd = tmpdir.path;
   const cmd = common.isWindows ? 'echo %cd%' : 'pwd';
   const response = execSync(cmd, { cwd });
 
@@ -125,7 +128,7 @@ const args = [
     'signal',
     'status',
     'stderr',
-    'stdout'
+    'stdout',
   ]);
 
   assert.throws(() => {

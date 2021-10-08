@@ -25,10 +25,12 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "async_wrap.h"
-#include "env.h"
 #include "connection_wrap.h"
 
 namespace node {
+
+class ExternalReferenceRegistry;
+class Environment;
 
 class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
  public:
@@ -44,6 +46,7 @@ class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context,
                          void* priv);
+  static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 
   SET_NO_MEMORY_INFO()
   SET_SELF_SIZE(TCPWrap)

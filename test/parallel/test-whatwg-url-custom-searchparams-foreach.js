@@ -2,16 +2,16 @@
 
 // Tests below are not from WPT.
 
-const common = require('../common');
-const { URLSearchParams } = require('url');
+require('../common');
+const assert = require('assert');
 
 {
   const params = new URLSearchParams();
-  common.expectsError(() => {
+  assert.throws(() => {
     params.forEach.call(undefined);
   }, {
     code: 'ERR_INVALID_THIS',
-    type: TypeError,
+    name: 'TypeError',
     message: 'Value of "this" must be of type URLSearchParams'
   });
 }

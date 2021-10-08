@@ -3,22 +3,14 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
+#include <cstdlib>
 #include "node_options.h"
 #include "util.h"
-#include <cstdlib>
 
 namespace node {
 
 PerIsolateOptions* PerProcessOptions::get_per_isolate_options() {
   return per_isolate.get();
-}
-
-DebugOptions* EnvironmentOptions::get_debug_options() {
-  return &debug_options_;
-}
-
-const DebugOptions& EnvironmentOptions::debug_options() const {
-  return debug_options_;
 }
 
 EnvironmentOptions* PerIsolateOptions::get_per_env_options() {
@@ -31,12 +23,14 @@ template <typename Options>
 void OptionsParser<Options>::AddOption(const char* name,
                                        const char* help_text,
                                        bool Options::* field,
-                                       OptionEnvvarSettings env_setting) {
+                                       OptionEnvvarSettings env_setting,
+                                       bool default_is_true) {
   options_.emplace(name,
                    OptionInfo{kBoolean,
                               std::make_shared<SimpleOptionField<bool>>(field),
                               env_setting,
-                              help_text});
+                              help_text,
+                              default_is_true});
 }
 
 template <typename Options>
@@ -146,10 +140,9 @@ void OptionsParser<Options>::Implies(const char* from,
                                      const char* to) {
   auto it = options_.find(to);
   CHECK_NE(it, options_.end());
-  CHECK_EQ(it->second.type, kBoolean);
-  implications_.emplace(from, Implication {
-    it->second.field, true
-  });
+  CHECK(it->second.type == kBoolean || it->second.type == kV8Option);
+  implications_.emplace(
+      from, Implication{it->second.type, to, it->second.field, true});
 }
 
 template <typename Options>
@@ -158,9 +151,8 @@ void OptionsParser<Options>::ImpliesNot(const char* from,
   auto it = options_.find(to);
   CHECK_NE(it, options_.end());
   CHECK_EQ(it->second.type, kBoolean);
-  implications_.emplace(from, Implication {
-    it->second.field, false
-  });
+  implications_.emplace(
+      from, Implication{it->second.type, to, it->second.field, false});
 }
 
 template <typename Options>
@@ -196,7 +188,8 @@ auto OptionsParser<Options>::Convert(
   return OptionInfo{original.type,
                     Convert(original.field, get_child),
                     original.env_setting,
-                    original.help_text};
+                    original.help_text,
+                    original.default_is_true};
 }
 
 template <typename Options>
@@ -204,9 +197,11 @@ template <typename ChildOptions>
 auto OptionsParser<Options>::Convert(
     typename OptionsParser<ChildOptions>::Implication original,
     ChildOptions* (Options::* get_child)()) {
-  return Implication {
-    Convert(original.target_field, get_child),
-    original.target_value
+  return Implication{
+      original.type,
+      original.name,
+      Convert(original.target_field, get_child),
+      original.target_value,
   };
 }
 
@@ -231,6 +226,10 @@ inline std::string NotAllowedInEnvErr(const std::string& arg) {
 
 inline std::string RequiresArgumentErr(const std::string& arg) {
   return arg + " requires an argument";
+}
+
+inline std::string NegationImpliesBooleanError(const std::string& arg) {
+  return arg + " is an invalid negation because it is not a boolean option";
 }
 
 // We store some of the basic information around a single Parse call inside
@@ -323,10 +322,21 @@ void OptionsParser<Options>::Parse(
     if (equals_index != std::string::npos)
       original_name += '=';
 
+    auto missing_argument = [&]() {
+      errors->push_back(RequiresArgumentErr(original_name));
+    };
+
     // Normalize by replacing `_` with `-` in options.
     for (std::string::size_type i = 2; i < name.size(); ++i) {
       if (name[i] == '_')
         name[i] = '-';
+    }
+
+    // Convert --no-foo to --foo and keep in mind that we're negating.
+    bool is_negation = false;
+    if (name.find("--no-") == 0) {
+      name.erase(2, 3);  // remove no-
+      is_negation = true;
     }
 
     {
@@ -370,37 +380,55 @@ void OptionsParser<Options>::Parse(
       break;
     }
 
+    {
+      std::string implied_name = name;
+      if (is_negation) {
+        // Implications for negated options are defined with "--no-".
+        implied_name.insert(2, "no-");
+      }
+      auto implications = implications_.equal_range(implied_name);
+      for (auto it = implications.first; it != implications.second; ++it) {
+        if (it->second.type == kV8Option) {
+          v8_args->push_back(it->second.name);
+        } else {
+          *it->second.target_field->template Lookup<bool>(options) =
+              it->second.target_value;
+        }
+      }
+    }
+
     if (it == options_.end()) {
       v8_args->push_back(arg);
       continue;
     }
 
-    {
-      auto implications = implications_.equal_range(name);
-      for (auto it = implications.first; it != implications.second; ++it) {
-        *it->second.target_field->template Lookup<bool>(options) =
-            it->second.target_value;
-      }
+    const OptionInfo& info = it->second;
+
+    // Some V8 options can be negated and they are validated by V8 later.
+    if (is_negation && info.type != kBoolean && info.type != kV8Option) {
+      errors->push_back(NegationImpliesBooleanError(arg));
+      break;
     }
 
-    const OptionInfo& info = it->second;
     std::string value;
     if (info.type != kBoolean && info.type != kNoOp && info.type != kV8Option) {
       if (equals_index != std::string::npos) {
         value = arg.substr(equals_index + 1);
         if (value.empty()) {
-        missing_argument:
-          errors->push_back(RequiresArgumentErr(original_name));
+          missing_argument();
           break;
         }
       } else {
-        if (args.empty())
-          goto missing_argument;
+        if (args.empty()) {
+          missing_argument();
+          break;
+        }
 
         value = args.pop_first();
 
         if (!value.empty() && value[0] == '-') {
-          goto missing_argument;
+          missing_argument();
+          break;
         } else {
           if (!value.empty() && value[0] == '\\' && value[1] == '-')
             value = value.substr(1);  // Treat \- as escaping an -.
@@ -410,7 +438,7 @@ void OptionsParser<Options>::Parse(
 
     switch (info.type) {
       case kBoolean:
-        *Lookup<bool>(info.field, options) = true;
+        *Lookup<bool>(info.field, options) = !is_negation;
         break;
       case kInteger:
         *Lookup<int64_t>(info.field, options) = std::atoll(value.c_str());

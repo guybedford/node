@@ -72,7 +72,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
@@ -86,7 +86,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 static int do_send(uv_udp_send_t* send_req) {
   uv_buf_t buf;
   struct sockaddr_in6 addr;
-
+  
   buf = uv_buf_init("PING", 4);
 
   ASSERT(0 == uv_ip6_addr(MULTICAST_ADDR, TEST_PORT, &addr));
@@ -115,11 +115,11 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer. Don't count towards cl_recv_cb_called */
-    ASSERT(addr == NULL);
+    ASSERT_NULL(addr);
     return;
   }
 
-  ASSERT(addr != NULL);
+  ASSERT_NOT_NULL(addr);
   ASSERT(nread == 4);
   ASSERT(!memcmp("PING", buf->base, nread));
 
@@ -193,9 +193,13 @@ TEST_IMPL(udp_multicast_join6) {
 
   ASSERT(r == 0);
 
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
   ASSERT(r == 0);
-
+  
   r = do_send(&req);
   ASSERT(r == 0);
 

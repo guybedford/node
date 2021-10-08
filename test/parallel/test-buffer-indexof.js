@@ -108,6 +108,13 @@ assert.strictEqual(
   3
 );
 
+// Test base64url encoding
+assert.strictEqual(
+  Buffer.from(b.toString('base64url'), 'base64url')
+    .indexOf('ZA==', 0, 'base64url'),
+  3
+);
+
 // test ascii encoding
 assert.strictEqual(
   Buffer.from(b.toString('ascii'), 'ascii')
@@ -180,15 +187,18 @@ assert.strictEqual(Buffer.from('aaaa0').indexOf('30', 'hex'), 4);
 assert.strictEqual(Buffer.from('aaaa00a').indexOf('3030', 'hex'), 4);
 
 {
-  // test usc2 encoding
-  const twoByteString = Buffer.from('\u039a\u0391\u03a3\u03a3\u0395', 'ucs2');
+  // Test usc2 and utf16le encoding
+  ['ucs2', 'utf16le'].forEach((encoding) => {
+    const twoByteString = Buffer.from(
+      '\u039a\u0391\u03a3\u03a3\u0395', encoding);
 
-  assert.strictEqual(twoByteString.indexOf('\u0395', 4, 'ucs2'), 8);
-  assert.strictEqual(twoByteString.indexOf('\u03a3', -4, 'ucs2'), 6);
-  assert.strictEqual(twoByteString.indexOf('\u03a3', -6, 'ucs2'), 4);
-  assert.strictEqual(twoByteString.indexOf(
-    Buffer.from('\u03a3', 'ucs2'), -6, 'ucs2'), 4);
-  assert.strictEqual(-1, twoByteString.indexOf('\u03a3', -2, 'ucs2'));
+    assert.strictEqual(twoByteString.indexOf('\u0395', 4, encoding), 8);
+    assert.strictEqual(twoByteString.indexOf('\u03a3', -4, encoding), 6);
+    assert.strictEqual(twoByteString.indexOf('\u03a3', -6, encoding), 4);
+    assert.strictEqual(twoByteString.indexOf(
+      Buffer.from('\u03a3', encoding), -6, encoding), 4);
+    assert.strictEqual(-1, twoByteString.indexOf('\u03a3', -2, encoding));
+  });
 }
 
 const mixedByteStringUcs2 =
@@ -350,15 +360,16 @@ assert.strictEqual(Buffer.from('aaaaa').indexOf('b', 'ucs2'), -1);
 [
   () => {},
   {},
-  []
+  [],
 ].forEach((val) => {
-  common.expectsError(
+  assert.throws(
     () => b.indexOf(val),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "value" argument must be one of type number, string, ' +
-               `Buffer, or Uint8Array. Received type ${typeof val}`
+      name: 'TypeError',
+      message: 'The "value" argument must be one of type number or string ' +
+               'or an instance of Buffer or Uint8Array.' +
+               common.invalidArgTypeHelper(val)
     }
   );
 });
@@ -604,4 +615,19 @@ assert.strictEqual(reallyLong.lastIndexOf(pattern), 0);
   const haystack = Buffer.from('a foo b foo');
   assert.strictEqual(haystack.indexOf(needle), 2);
   assert.strictEqual(haystack.lastIndexOf(needle), haystack.length - 3);
+}
+
+// Avoid abort because of invalid usage
+// see https://github.com/nodejs/node/issues/32753
+{
+  assert.throws(() => {
+    const buffer = require('buffer');
+    new buffer.Buffer.prototype.lastIndexOf(1, 'str');
+  }, {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+    message: 'The "buffer" argument must be an instance of Buffer, ' +
+             'TypedArray, or DataView. ' +
+             'Received an instance of lastIndexOf'
+  });
 }

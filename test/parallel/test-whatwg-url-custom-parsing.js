@@ -8,7 +8,6 @@ if (!common.hasIntl) {
   common.skip('missing Intl');
 }
 
-const URL = require('url').URL;
 const assert = require('assert');
 const fixtures = require('../common/fixtures');
 
@@ -30,7 +29,7 @@ const typeFailures = [
   { input: new RegExp() },
   { input: 'test', base: null },
   { input: 'http://nodejs.org', base: null },
-  { input: () => {} }
+  { input: () => {} },
 ];
 
 // See https://github.com/w3c/web-platform-tests/pull/10955
@@ -49,19 +48,15 @@ const failureTests = originalFailures
   .concat(typeFailures)
   .concat(aboutBlankFailures);
 
-const expectedError = common.expectsError(
-  { code: 'ERR_INVALID_URL', type: TypeError }, failureTests.length);
+const expectedError = { code: 'ERR_INVALID_URL', name: 'TypeError' };
 
 for (const test of failureTests) {
   assert.throws(
     () => new URL(test.input, test.base),
     (error) => {
-      expectedError(error);
-
-      // The input could be processed, so we don't do strict matching here
-      let match;
-      assert(match = (`${error}`).match(/Invalid URL: (.*)$/));
-      assert.strictEqual(error.input, match[1]);
+      assert.throws(() => { throw error; }, expectedError);
+      assert.strictEqual(`${error}`, 'TypeError [ERR_INVALID_URL]: Invalid URL');
+      assert.strictEqual(error.message, 'Invalid URL');
       return true;
     });
 }

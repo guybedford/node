@@ -1,5 +1,5 @@
 'use strict';
-// Flags: --expose_internals
+// Flags: --expose-internals
 
 require('../common');
 const assert = require('assert');
@@ -33,4 +33,4 @@ try {
       getHiddenValue(err, kArrowMessagePrivateSymbolIndex);
 }
 
-assert(/bad_syntax\.js:1/.test(arrowMessage));
+assert.match(arrowMessage, /bad_syntax\.js:1/);

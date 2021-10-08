@@ -20,6 +20,7 @@ session.on('Debugger.paused', () => {
 session.connect();
 session.post('Debugger.enable');
 console.log('Ready');
+console.log('Ready');
 `;
 
 async function setupSession(node) {
@@ -36,7 +37,7 @@ async function setupSession(node) {
       'params': { 'interval': 100 } },
     { 'method': 'Debugger.setBlackboxPatterns',
       'params': { 'patterns': [] } },
-    { 'method': 'Runtime.runIfWaitingForDebugger' }
+    { 'method': 'Runtime.runIfWaitingForDebugger' },
   ]);
   return session;
 }
@@ -48,10 +49,14 @@ async function testSuspend(sessionA, sessionB) {
 
   await sessionA.waitForNotification('Runtime.consoleAPICalled',
                                      'Console output');
+  // NOTE(mmarchini): Remove second console.log when
+  // https://bugs.chromium.org/p/v8/issues/detail?id=10287 is fixed.
+  await sessionA.waitForNotification('Runtime.consoleAPICalled',
+                                     'Console output');
   sessionA.send({ 'method': 'Debugger.pause' });
   return Promise.all([
     sessionA.waitForNotification('Debugger.paused', 'SessionA paused'),
-    sessionB.waitForNotification('Debugger.paused', 'SessionB paused')
+    sessionB.waitForNotification('Debugger.paused', 'SessionB paused'),
   ]);
 }
 
@@ -69,4 +74,4 @@ async function runTest() {
   return child.expectShutdown();
 }
 
-runTest();
+runTest().then(common.mustCall());

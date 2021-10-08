@@ -149,7 +149,7 @@ RuleBasedTimeZone::addTransitionRule(TimeZoneRule* rule, UErrorCode& status) {
 
 void
 RuleBasedTimeZone::completeConst(UErrorCode& status) const {
-    static UMutex gLock = U_MUTEX_INITIALIZER;
+    static UMutex gLock;
     if (U_FAILURE(status)) {
         return;
     }
@@ -356,8 +356,8 @@ cleanup:
     fUpToDate = FALSE;
 }
 
-TimeZone*
-RuleBasedTimeZone::clone(void) const {
+RuleBasedTimeZone*
+RuleBasedTimeZone::clone() const {
     return new RuleBasedTimeZone(*this);
 }
 
@@ -403,9 +403,9 @@ RuleBasedTimeZone::getOffset(UDate date, UBool local, int32_t& rawOffset,
     getOffsetInternal(date, local, kFormer, kLatter, rawOffset, dstOffset, status);
 }
 
-void
-RuleBasedTimeZone::getOffsetFromLocal(UDate date, int32_t nonExistingTimeOpt, int32_t duplicatedTimeOpt,
-                                      int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) const {
+void RuleBasedTimeZone::getOffsetFromLocal(UDate date, UTimeZoneLocalOption nonExistingTimeOpt,
+                                           UTimeZoneLocalOption duplicatedTimeOpt,
+                                           int32_t& rawOffset, int32_t& dstOffset, UErrorCode& status) const {
     getOffsetInternal(date, TRUE, nonExistingTimeOpt, duplicatedTimeOpt, rawOffset, dstOffset, status);
 }
 

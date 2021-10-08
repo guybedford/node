@@ -33,6 +33,7 @@
 #include "unicode/gregocal.h"
 #include "unicode/smpdtfmt.h"
 
+#include "cmemory.h"
 #include "gregoimp.h"
 #include "umutex.h"
 
@@ -41,7 +42,7 @@ U_NAMESPACE_BEGIN
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(SimpleTimeZone)
 
 // Use only for decodeStartRule() and decodeEndRule() where the year is not
-// available. Set February to 29 days to accomodate rules with that date
+// available. Set February to 29 days to accommodate rules with that date
 // and day-of-week-on-or-before-that-date mode (DOW_LE_DOM_MODE).
 // The compareToRule() method adjusts to February 28 in non-leap years.
 //
@@ -242,7 +243,7 @@ SimpleTimeZone::operator==(const TimeZone& that) const
 // -------------------------------------
 
 // Called by TimeZone::createDefault() inside a Mutex - be careful.
-TimeZone*
+SimpleTimeZone*
 SimpleTimeZone::clone() const
 {
     return new SimpleTimeZone(*this);
@@ -508,8 +509,10 @@ SimpleTimeZone::getOffset(uint8_t era, int32_t year, int32_t month, int32_t day,
 }
 
 void
-SimpleTimeZone::getOffsetFromLocal(UDate date, int32_t nonExistingTimeOpt, int32_t duplicatedTimeOpt,
-                                   int32_t& rawOffsetGMT, int32_t& savingsDST, UErrorCode& status) const {
+SimpleTimeZone::getOffsetFromLocal(UDate date, UTimeZoneLocalOption nonExistingTimeOpt,
+                                   UTimeZoneLocalOption duplicatedTimeOpt, int32_t& rawOffsetGMT,
+                                   int32_t& savingsDST, UErrorCode& status) const
+{
     if (U_FAILURE(status)) {
         return;
     }
@@ -1083,7 +1086,7 @@ SimpleTimeZone::checkTransitionRules(UErrorCode& status) const {
     if (U_FAILURE(status)) {
         return;
     }
-    static UMutex gLock = U_MUTEX_INITIALIZER;
+    static UMutex gLock;
     umtx_lock(&gLock);
     if (!transitionRulesInitialized) {
         SimpleTimeZone *ncThis = const_cast<SimpleTimeZone*>(this);

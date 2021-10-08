@@ -11,9 +11,8 @@ const bench = common.createBenchmark(main, {
 
 function main({ encoding, n }) {
   bench.start();
-  for (var i = 0; i < n; ++i) {
-    const sd = new StringDecoder(encoding);
-    !!sd.encoding;
+  for (let i = 0; i < n; ++i) {
+    new StringDecoder(encoding);
   }
   bench.end(n);
 }

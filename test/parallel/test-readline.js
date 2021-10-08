@@ -4,6 +4,8 @@ const { PassThrough } = require('stream');
 const readline = require('readline');
 const assert = require('assert');
 
+common.skipIfDumbTerminal();
+
 {
   const input = new PassThrough();
   const rl = readline.createInterface({
@@ -140,7 +142,7 @@ const assert = require('assert');
     'hop/zoo',
     '/zoo',
     'zoo',
-    ''
+    '',
   ].forEach(function(expectedLine) {
     rl.write.apply(rl, key.xterm.metad);
     assert.strictEqual(rl.cursor, 0);

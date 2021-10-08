@@ -12,98 +12,40 @@
     'v8_os_page_size%': 0,
     'generate_bytecode_output_root': '<(SHARED_INTERMEDIATE_DIR)/generate-bytecode-output-root',
     'generate_bytecode_builtins_list_output': '<(generate_bytecode_output_root)/builtins-generated/bytecodes-builtins-list.h',
-    'torque_files': [
-      "<(V8_ROOT)/src/builtins/arguments.tq",
-      "<(V8_ROOT)/src/builtins/array-copywithin.tq",
-      "<(V8_ROOT)/src/builtins/array-every.tq",
-      "<(V8_ROOT)/src/builtins/array-filter.tq",
-      "<(V8_ROOT)/src/builtins/array-find.tq",
-      "<(V8_ROOT)/src/builtins/array-findindex.tq",
-      "<(V8_ROOT)/src/builtins/array-foreach.tq",
-      "<(V8_ROOT)/src/builtins/array-join.tq",
-      "<(V8_ROOT)/src/builtins/array-lastindexof.tq",
-      "<(V8_ROOT)/src/builtins/array-map.tq",
-      "<(V8_ROOT)/src/builtins/array-of.tq",
-      "<(V8_ROOT)/src/builtins/array-reduce-right.tq",
-      "<(V8_ROOT)/src/builtins/array-reduce.tq",
-      "<(V8_ROOT)/src/builtins/array-reverse.tq",
-      "<(V8_ROOT)/src/builtins/array-shift.tq",
-      "<(V8_ROOT)/src/builtins/array-slice.tq",
-      "<(V8_ROOT)/src/builtins/array-some.tq",
-      "<(V8_ROOT)/src/builtins/array-splice.tq",
-      "<(V8_ROOT)/src/builtins/array-unshift.tq",
-      "<(V8_ROOT)/src/builtins/array.tq",
-      "<(V8_ROOT)/src/builtins/base.tq",
-      "<(V8_ROOT)/src/builtins/bigint.tq",
-      "<(V8_ROOT)/src/builtins/boolean.tq",
-      "<(V8_ROOT)/src/builtins/collections.tq",
-      "<(V8_ROOT)/src/builtins/data-view.tq",
-      "<(V8_ROOT)/src/builtins/extras-utils.tq",
-      "<(V8_ROOT)/src/builtins/frames.tq",
-      "<(V8_ROOT)/src/builtins/growable-fixed-array.tq",
-      "<(V8_ROOT)/src/builtins/internal-coverage.tq",
-      "<(V8_ROOT)/src/builtins/iterator.tq",
-      "<(V8_ROOT)/src/builtins/math.tq",
-      "<(V8_ROOT)/src/builtins/object-fromentries.tq",
-      "<(V8_ROOT)/src/builtins/object.tq",
-      "<(V8_ROOT)/src/builtins/proxy-constructor.tq",
-      "<(V8_ROOT)/src/builtins/proxy-delete-property.tq",
-      "<(V8_ROOT)/src/builtins/proxy-get-property.tq",
-      "<(V8_ROOT)/src/builtins/proxy-get-prototype-of.tq",
-      "<(V8_ROOT)/src/builtins/proxy-has-property.tq",
-      "<(V8_ROOT)/src/builtins/proxy-is-extensible.tq",
-      "<(V8_ROOT)/src/builtins/proxy-prevent-extensions.tq",
-      "<(V8_ROOT)/src/builtins/proxy-revocable.tq",
-      "<(V8_ROOT)/src/builtins/proxy-revoke.tq",
-      "<(V8_ROOT)/src/builtins/proxy-set-property.tq",
-      "<(V8_ROOT)/src/builtins/proxy-set-prototype-of.tq",
-      "<(V8_ROOT)/src/builtins/proxy.tq",
-      "<(V8_ROOT)/src/builtins/reflect.tq",
-      "<(V8_ROOT)/src/builtins/regexp-match.tq",
-      "<(V8_ROOT)/src/builtins/regexp-replace.tq",
-      "<(V8_ROOT)/src/builtins/regexp-source.tq",
-      "<(V8_ROOT)/src/builtins/regexp-test.tq",
-      "<(V8_ROOT)/src/builtins/regexp.tq",
-      "<(V8_ROOT)/src/builtins/string.tq",
-      "<(V8_ROOT)/src/builtins/string-endswith.tq",
-      "<(V8_ROOT)/src/builtins/string-html.tq",
-      "<(V8_ROOT)/src/builtins/string-iterator.tq",
-      "<(V8_ROOT)/src/builtins/string-pad.tq",
-      "<(V8_ROOT)/src/builtins/string-repeat.tq",
-      "<(V8_ROOT)/src/builtins/string-slice.tq",
-      "<(V8_ROOT)/src/builtins/string-startswith.tq",
-      "<(V8_ROOT)/src/builtins/string-substring.tq",
-      "<(V8_ROOT)/src/builtins/torque-internal.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-createtypedarray.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-every.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-filter.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-find.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-findindex.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-foreach.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-reduce.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-reduceright.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-slice.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-some.tq",
-      "<(V8_ROOT)/src/builtins/typed-array-subarray.tq",
-      "<(V8_ROOT)/src/builtins/typed-array.tq",
-      "<(V8_ROOT)/third_party/v8/builtins/array-sort.tq",
-      "<(V8_ROOT)/test/torque/test-torque.tq",
-    ],
-    'torque_output_root': '<(SHARED_INTERMEDIATE_DIR)/torque-output-root',
-    'torque_files_replaced': ['<!@pymod_do_main(ForEachReplace ".tq" "-tq-csa" <@(torque_files))'],
-    'torque_outputs': ['<!@pymod_do_main(ForEachFormat "<(torque_output_root)/torque-generated/%s.cc" <@(torque_files_replaced))'],
-    'torque_outputs+': ['<!@pymod_do_main(ForEachFormat "<(torque_output_root)/torque-generated/%s.h" <@(torque_files_replaced))'],
+    'torque_files': ['<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "torque_files = ")'],
+    # Torque and V8 expect the files to be named relative to V8's root.
+    'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplace "<@(V8_ROOT)/" "" <@(torque_files))'],
+    'torque_files_replaced': ['<!@pymod_do_main(ForEachReplace ".tq" "-tq" <@(torque_files_without_v8_root))'],
+    'torque_outputs_csa_cc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.cc" <@(torque_files_replaced))'],
+    'torque_outputs_csa_h': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.h" <@(torque_files_replaced))'],
+    'torque_outputs_inl_inc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-inl.inc" <@(torque_files_replaced))'],
+    'torque_outputs_cc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s.cc" <@(torque_files_replaced))'],
+    'torque_outputs_inc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s.inc" <@(torque_files_replaced))'],
     'v8_compiler_sources': ['<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_compiler_sources = ")'],
-
     'conditions': [
-      ['v8_enable_i18n_support', {
+      ['v8_enable_i18n_support==1', {
         'torque_files': [
-          "<(V8_ROOT)/src/objects/intl-objects.tq",
-        ]
-      }]
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "torque_files =.*?v8_enable_i18n_support.*?torque_files \\+= ")',
+        ],
+      }],
+      ['v8_enable_webassembly==1', {
+        'torque_files': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "torque_files =.*?v8_enable_webassembly.*?torque_files \\+= ")',
+        ],
+        'v8_compiler_sources': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_compiler_sources =.*?v8_enable_webassembly.*?v8_compiler_sources \\+= ")',
+        ],
+      }],
     ],
   },
   'includes': ['toolchain.gypi', 'features.gypi'],
+  'target_defaults': {
+    'msvs_settings': {
+      'VCCLCompilerTool': {
+        'AdditionalOptions': ['/utf-8']
+      }
+    },
+  },
   'targets': [
     {
       'target_name': 'run_torque',
@@ -119,7 +61,7 @@
       'hard_dependency': 1,
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(torque_output_root)',
+          '<(SHARED_INTERMEDIATE_DIR)',
         ],
       },
       'actions': [
@@ -130,26 +72,37 @@
             '<@(torque_files)',
           ],
           'outputs': [
-            '<(torque_output_root)/torque-generated/builtin-definitions-tq.h',
-            '<(torque_output_root)/torque-generated/field-offsets-tq.h',
-            '<(torque_output_root)/torque-generated/class-verifiers-tq.cc',
-            '<(torque_output_root)/torque-generated/class-verifiers-tq.h',
-            '<(torque_output_root)/torque-generated/objects-printer-tq.cc',
-            '<(torque_output_root)/torque-generated/class-definitions-tq.cc',
-            '<(torque_output_root)/torque-generated/class-definitions-tq-inl.h',
-            '<(torque_output_root)/torque-generated/class-definitions-tq.h',
-            '<(torque_output_root)/torque-generated/class-debug-readers-tq.cc',
-            '<(torque_output_root)/torque-generated/class-debug-readers-tq.h',
-            '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.cc',
-            '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.h',
-            '<(torque_output_root)/torque-generated/csa-types-tq.h',
-            '<(torque_output_root)/torque-generated/instance-types-tq.h',
-            '<@(torque_outputs)',
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/bit-fields.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtin-definitions.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-debug-readers.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-debug-readers.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-forward-declarations.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-verifiers.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-verifiers.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/csa-types.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/debug-macros.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/debug-macros.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/enum-verifiers.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/exported-macros-assembler.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/exported-macros-assembler.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/factory.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/factory.inc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/field-offsets.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/instance-types.h",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/interface-descriptors.inc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/objects-body-descriptors-inl.inc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/objects-printer.cc",
+            '<@(torque_outputs_csa_cc)',
+            '<@(torque_outputs_csa_h)',
+            '<@(torque_outputs_inl_inc)',
+            '<@(torque_outputs_cc)',
+            '<@(torque_outputs_inc)',
           ],
           'action': [
-            '<@(_inputs)',
-            '-o', '<(torque_output_root)/torque-generated',
-            '-v8-root', '<(V8_ROOT)'
+            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
+            '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated',
+            '-v8-root', '<(V8_ROOT)',
+            '<@(torque_files_without_v8_root)',
           ],
         },
       ],
@@ -162,7 +115,7 @@
         ['want_separate_host_toolset', {
           'toolsets': ['host', 'target'],
         }],
-        ['v8_enable_i18n_support', {
+        ['v8_enable_i18n_support==1', {
           'dependencies': [
             '<(icu_gyp_path):icui18n',
             '<(icu_gyp_path):icuuc',
@@ -175,6 +128,20 @@
       ],
     },  # v8_maybe_icu
     {
+      'target_name': 'torque_runtime_support',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<(V8_ROOT)/src/torque/runtime-support.h',
+        ],
+      },
+    },  # torque_runtime_support
+    {
       'target_name': 'torque_generated_initializers',
       'type': 'none',
       'hard_dependency': 1,
@@ -186,14 +153,18 @@
       'dependencies': [
         'generate_bytecode_builtins_list',
         'run_torque',
+        'v8_base_without_compiler',
+        'torque_runtime_support',
         'v8_maybe_icu',
       ],
       'direct_dependent_settings': {
         'sources': [
-          '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.cc',
-          '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.h',
-          '<(torque_output_root)/torque-generated/csa-types-tq.h',
-          '<@(torque_outputs)',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/csa-types.h',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/enum-verifiers.cc',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/exported-macros-assembler.cc',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/exported-macros-assembler.h',
+          '<@(torque_outputs_csa_cc)',
+          '<@(torque_outputs_csa_h)',
         ],
       }
     },  # torque_generated_initializers
@@ -209,17 +180,23 @@
       'dependencies': [
         'generate_bytecode_builtins_list',
         'run_torque',
+        'v8_internal_headers',
+        'v8_libbase',
         'v8_maybe_icu',
       ],
       'direct_dependent_settings': {
         'sources': [
-          '<(torque_output_root)/torque-generated/class-definitions-tq.cc',
-          '<(torque_output_root)/torque-generated/class-verifiers-tq.cc',
-          '<(torque_output_root)/torque-generated/class-verifiers-tq.h',
-          '<(torque_output_root)/torque-generated/objects-printer-tq.cc',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-forward-declarations.h',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-verifiers.cc',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/class-verifiers.h',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/factory.cc',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/objects-printer.cc',
+          '<@(torque_outputs_inl_inc)',
+          '<@(torque_outputs_cc)',
+          '<@(torque_outputs_inc)',
         ],
         'include_dirs': [
-          '<(torque_output_root)',
+          '<(SHARED_INTERMEDIATE_DIR)',
         ],
       },
     },  # torque_generated_definitions
@@ -241,7 +218,7 @@
         ],
         'include_dirs': [
           '<(generate_bytecode_output_root)',
-          '<(torque_output_root)',
+          '<(SHARED_INTERMEDIATE_DIR)',
         ],
       },
       'actions': [
@@ -262,26 +239,6 @@
         },
       ],
     },  # generate_bytecode_builtins_list
-
-    {
-      # This rule delegates to either v8_snapshot or v8_nosnapshot depending on
-      # the current variables.
-      # The intention is to make the 'calling' rules a bit simpler.
-      'target_name': 'v8_maybe_snapshot',
-      'type': 'none',
-      'toolsets': ['target'],
-      'hard_dependency': 1,
-      'conditions': [
-        # The dependency on v8_base should come from a transitive
-        # dependency however the Android toolchain requires libv8_base.a
-        # to appear before libv8_snapshot.a so it's listed explicitly.
-        ['v8_use_snapshot==1', {
-          'dependencies': ['v8_base', 'v8_snapshot'],
-        }, {
-          'dependencies': ['v8_base', 'v8_init', 'v8_nosnapshot'],
-        }],
-      ]
-    },  # v8_maybe_snapshot
     {
       'target_name': 'v8_init',
       'type': 'static_library',
@@ -293,14 +250,12 @@
       'dependencies': [
         'generate_bytecode_builtins_list',
         'run_torque',
+        'v8_base_without_compiler',
         'v8_initializers',
         'v8_maybe_icu',
       ],
       'sources': [
-        ### gcmole(all) ###
         '<(V8_ROOT)/src/init/setup-isolate-full.cc',
-
-        # '<(generate_bytecode_builtins_list_output)',
       ],
     },  # v8_init
     {
@@ -308,19 +263,24 @@
       'type': 'static_library',
       'dependencies': [
         'torque_generated_initializers',
+        'v8_base_without_compiler',
+        'v8_shared_internal_headers',
       ],
       'include_dirs': [
-        '<(torque_output_root)',
+        '<(SHARED_INTERMEDIATE_DIR)',
         '<(generate_bytecode_output_root)',
       ],
       'sources': [
         '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_initializers.*?sources = ")',
-
-        '<@(torque_outputs)',
       ],
       'conditions': [
         ['want_separate_host_toolset', {
           'toolsets': ['host', 'target'],
+        }],
+        ['v8_enable_webassembly==1', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_initializers.*?v8_enable_webassembly.*?sources \\+= ")',
+          ],
         }],
         ['v8_target_arch=="ia32"', {
           'sources': [
@@ -347,12 +307,22 @@
             '<(V8_ROOT)/src/builtins/mips/builtins-mips.cc',
           ],
         }],
+        ['v8_target_arch=="riscv64" or v8_target_arch=="riscv64"', {
+          'sources': [
+            '<(V8_ROOT)/src/builtins/riscv64/builtins-riscv64.cc',
+          ],
+        }],        
         ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
           'sources': [
             '<(V8_ROOT)/src/builtins/mips64/builtins-mips64.cc',
           ],
         }],
-        ['v8_target_arch=="ppc" or v8_target_arch=="ppc64"', {
+        ['v8_target_arch=="ppc"', {
+          'sources': [
+            '<(V8_ROOT)/src/builtins/ppc/builtins-ppc.cc',
+          ],
+        }],
+        ['v8_target_arch=="ppc64"', {
           'sources': [
             '<(V8_ROOT)/src/builtins/ppc/builtins-ppc.cc',
           ],
@@ -388,6 +358,11 @@
       'toolsets': ['target'],
       'conditions': [
         ['want_separate_host_toolset', {
+          'conditions': [
+            ['v8_target_arch=="arm64"', {
+              'msvs_enable_marmasm': 1,
+            }]
+          ],
           'dependencies': [
             'generate_bytecode_builtins_list',
             'run_torque',
@@ -415,7 +390,6 @@
       ],
       'sources': [
         '<(V8_ROOT)/src/init/setup-isolate-deserialize.cc',
-        './extras-libraries.cc',
       ],
       'xcode_settings': {
         # V8 7.4 over macOS10.11 compatibility
@@ -436,27 +410,19 @@
               '--target_os=<(OS)',
               '--target_arch=<(v8_target_arch)',
               '--startup_src', '<(INTERMEDIATE_DIR)/snapshot.cc',
+              '--embedded_variant', 'Default',
+              '--embedded_src', '<(INTERMEDIATE_DIR)/embedded.S',
             ],
           },
           'inputs': [
             '<(mksnapshot_exec)',
           ],
-          'outputs': ["<(INTERMEDIATE_DIR)/snapshot.cc"],
+          'outputs': [
+            '<(INTERMEDIATE_DIR)/snapshot.cc',
+            '<(INTERMEDIATE_DIR)/embedded.S',
+          ],
           'process_outputs_as_sources': 1,
           'conditions': [
-            ['v8_enable_embedded_builtins', {
-              # In this case we use `embedded_variant "Default"`
-              # and `suffix = ''` for the template `embedded${suffix}.S`.
-              'outputs': ['<(INTERMEDIATE_DIR)/embedded.S'],
-              'variables': {
-                'mksnapshot_flags': [
-                  '--embedded_variant', 'Default',
-                  '--embedded_src', '<(INTERMEDIATE_DIR)/embedded.S',
-                ],
-              },
-            }, {
-               'outputs': ['<(V8_ROOT)/src/snapshot/embedded/embedded-empty.cc']
-             }],
             ['v8_random_seed', {
               'variables': {
                 'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
@@ -498,31 +464,6 @@
       ],
     },  # v8_snapshot
     {
-      'target_name': 'v8_nosnapshot',
-      'type': 'static_library',
-      'dependencies': [
-        # 'js2c_extras',  # Disabled for Node.js
-        'generate_bytecode_builtins_list',
-        'run_torque',
-        'v8_maybe_icu',
-      ],
-      'sources': [
-        './extras-libraries.cc',
-        '<(V8_ROOT)/src/snapshot/embedded/embedded-empty.cc',
-        '<(V8_ROOT)/src/snapshot/snapshot-empty.cc',
-      ],
-      'conditions': [
-        ['want_separate_host_toolset', {
-          'toolsets': ['host', 'target'],
-        }],
-        ['component=="shared_library"', {
-          'defines': [
-            'BUILDING_V8_SHARED',
-          ],
-        }],
-      ]
-    },  # v8_nosnapshot
-    {
       'target_name': 'v8_version',
       'type': 'none',
       'conditions': [
@@ -539,6 +480,21 @@
       },
     },  # v8_version
     {
+      'target_name': 'v8_config_headers',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<(V8_ROOT)/include/v8-platform.h',
+          '<(V8_ROOT)/include/v8config.h',
+        ],
+      },
+    },  # v8_config_headers
+    {
       'target_name': 'v8_headers',
       'type': 'none',
       'conditions': [
@@ -547,17 +503,19 @@
         }],
       ],
       'dependencies': [
+        'v8_config_headers',
+        'cppgc_headers',
         'v8_version',
       ],
       'direct_dependent_settings': {
         'sources': [
+          '<(V8_ROOT)/include/v8-cppgc.h',
+          '<(V8_ROOT)/include/v8-fast-api-calls.h',
           '<(V8_ROOT)/include/v8-internal.h',
+          '<(V8_ROOT)/include/v8-profiler.h',
+          '<(V8_ROOT)/include/v8-util.h',
           '<(V8_ROOT)/include/v8.h',
-          '<(V8_ROOT)/include/v8config.h',
 
-          # The following headers cannot be platform-specific. The include validation
-          # of `gn gen $dir --check` requires all header files to be available on all
-          # platforms.
           '<(V8_ROOT)/include/v8-wasm-trap-handler-posix.h',
           '<(V8_ROOT)/include/v8-wasm-trap-handler-win.h',
         ],
@@ -573,13 +531,164 @@
       ],
       'dependencies': [
         'v8_headers',
+        'v8_libbase',
       ],
       'direct_dependent_settings': {
         'sources': [
           '<(V8_ROOT)/src/common/globals.h',
+          '<(V8_ROOT)/src/wasm/wasm-constants.h',
+          '<(V8_ROOT)/src/wasm/wasm-limits.h',
         ],
       },
     },  # v8_shared_internal_headers
+    {
+      'target_name': 'v8_flags',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'dependencies': [
+        'v8_shared_internal_headers',
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<(V8_ROOT)/src/flags/flag-definitions.h',
+          '<(V8_ROOT)/src/flags/flags.h',
+        ],
+      },
+    },  # v8_flags
+    {
+      'target_name': 'v8_internal_headers',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'dependencies': [
+        'torque_runtime_support',
+        'v8_flags',
+        'v8_headers',
+        'v8_maybe_icu',
+        'v8_shared_internal_headers',
+        'cppgc_headers',
+        'generate_bytecode_builtins_list',
+        'run_torque',
+        'v8_libbase',
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?sources = ")',
+        ],
+        'conditions': [
+          ['v8_enable_webassembly==1', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_webassembly.*?sources \\+= ")',
+            ],
+          }],
+          ['v8_enable_i18n_support==1', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?sources \\+= ")',
+            ],
+          }],
+          ['v8_control_flow_integrity==0', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?!v8_control_flow_integrity.*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="ia32"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"x86\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="x64"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"x64\\".*?sources \\+= ")',
+            ],
+            'conditions': [
+              ['OS=="win"', {
+                'sources': [
+                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"x64\\".*?is_win.*?sources \\+= ")',
+                ],
+              }],
+              ['v8_enable_webassembly==1', {
+                'conditions': [
+                  ['OS=="linux" or OS=="mac" or OS=="ios" or OS=="freebsd"', {
+                    'sources': [
+                      '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"x64\\".*?v8_enable_webassembly.*?is_linux.*?sources \\+= ")',
+                    ],
+                  }],
+                  ['OS=="win"', {
+                    'sources': [
+                      '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"x64\\".*?v8_enable_webassembly.*?is_win.*?sources \\+= ")',
+                    ],
+                  }],
+                ],
+              }],
+            ],
+          }],
+          ['v8_target_arch=="arm"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"arm\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="arm64"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"arm64\\".*?sources \\+= ")',
+            ],
+            'conditions': [
+              ['v8_control_flow_integrity==1', {
+                'sources': [
+                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"arm64\\".*?v8_control_flow_integrity.*?sources \\+= ")',
+                ],
+              }],
+              ['v8_enable_webassembly==1 and OS=="mac"', {
+                'sources': [
+                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"arm64\\".*?v8_enable_webassembly.*?is_mac.*?sources \\+= ")',
+                ],
+              }],
+              ['OS=="win"', {
+                'sources': [
+                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"arm64\\".*?is_win.*?sources \\+= ")',
+                ],
+              }],
+            ],
+          }],
+          ['v8_target_arch=="mips" or v8_target_arch=="mipsel"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"mips\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"mips64\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="ppc"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"ppc\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="ppc64"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"ppc64\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="s390x"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"s390\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="riscv64"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"riscv64\\".*?sources \\+= ")',
+            ],
+          }],
+        ],
+      },
+    },  # v8_internal_headers
     {
       'target_name': 'v8_compiler_opt',
       'type': 'static_library',
@@ -587,6 +696,10 @@
         'generate_bytecode_builtins_list',
         'run_torque',
         'v8_maybe_icu',
+        'v8_base_without_compiler',
+        'v8_internal_headers',
+        'v8_libbase',
+        'v8_shared_internal_headers',
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
@@ -609,7 +722,11 @@
       'dependencies': [
         'generate_bytecode_builtins_list',
         'run_torque',
+        'v8_internal_headers',
         'v8_maybe_icu',
+        'v8_base_without_compiler',
+        'v8_libbase',
+        'v8_shared_internal_headers',
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
@@ -660,29 +777,28 @@
       'target_name': 'v8_base_without_compiler',
       'type': 'static_library',
       'dependencies': [
-        # Code generators that only need to be build for the host.
         'torque_generated_definitions',
+        'v8_bigint',
+        'v8_cppgc_shared',
         'v8_headers',
         'v8_libbase',
-        'v8_libsampler',
         'v8_shared_internal_headers',
         'v8_version',
-        # BUILD.gn public_deps
+        'cppgc_base',
         'generate_bytecode_builtins_list',
         'run_torque',
+        'v8_internal_headers',
         'v8_maybe_icu',
+        'v8_zlib',
       ],
       'includes': ['inspector.gypi'],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(generate_bytecode_output_root)',
-          '<(torque_output_root)',
+          '<(SHARED_INTERMEDIATE_DIR)',
         ],
       },
       'sources': [
-        # "//base/trace_event/common/trace_event_common.h",
-
-        ### gcmole(all) ###
         '<(generate_bytecode_builtins_list_output)',
 
         '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?sources = ")',
@@ -690,63 +806,105 @@
         '<@(inspector_all_sources)',
       ],
       'conditions': [
+        ['v8_enable_third_party_heap==1', {
+          # TODO(targos): add values from v8_third_party_heap_files to sources
+        }, {
+          'sources': [
+            '<(V8_ROOT)/src/heap/third-party/heap-api-stub.cc',
+          ],
+        }],
+        ['v8_enable_webassembly==1', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_enable_webassembly.*?sources \\+= ")',
+          ],
+        }],
         ['want_separate_host_toolset', {
           'toolsets': ['host', 'target'],
         }],
         ['v8_target_arch=="ia32"', {
-          'sources': [  ### gcmole(arch:ia32) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x86.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x86.*?sources \\+= ")',
           ],
         }],
         ['v8_target_arch=="x64"', {
-          'sources': [  ### gcmole(arch:x64) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64\\".*?sources \\+= ")',
           ],
           'conditions': [
-            # iOS Xcode simulator builds run on an x64 target. iOS and macOS are both
-            # based on Darwin and thus POSIX-compliant to a similar degree.
-            ['OS=="linux" or OS=="mac" or OS=="ios"', {
-              'sources': [
-                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?is_linux.*?sources \+= ")',
-              ],
-            }],
             ['OS=="win"', {
               'sources': [
-                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?is_win.*?sources \+= ")',
+                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64\\".*?is_win.*?sources \\+= ")',
+              ],
+            }],
+            ['v8_enable_webassembly==1', {
+              'conditions': [
+                ['OS=="linux" or OS=="mac" or OS=="ios" or OS=="freebsd"', {
+                  'sources': [
+                    '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64\\".*?v8_enable_webassembly.*?is_linux.*?sources \\+= ")',
+                  ],
+                }],
+                ['OS=="win"', {
+                  'sources': [
+                    '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"x64\\".*?v8_enable_webassembly.*?is_win.*?sources \\+= ")',
+                  ],
+                }],
               ],
             }],
           ],
         }],
         ['v8_target_arch=="arm"', {
-          'sources': [  ### gcmole(arch:arm) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm\\".*?sources \\+= ")',
           ],
         }],
         ['v8_target_arch=="arm64"', {
-          'sources': [  ### gcmole(arch:arm64) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm64.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"arm64\\".*?sources \\+= ")',
+          ],
+          'conditions': [
+            ['OS=="mac"', {
+              'sources': [
+                "<(V8_ROOT)/src/trap-handler/handler-inside-posix.cc",
+                "<(V8_ROOT)/src/trap-handler/handler-outside-posix.cc",
+              ],
+            }],
+            ['OS=="win"', {
+              'sources': [
+                "<(V8_ROOT)/src/diagnostics/unwinding-info-win64.cc",
+              ],
+            }],
           ],
         }],
         ['v8_target_arch=="mips" or v8_target_arch=="mipsel"', {
-          'sources': [  ### gcmole(arch:mipsel) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips\\".*?sources \\+= ")',
           ],
         }],
         ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
-          'sources': [  ### gcmole(arch:mips64el) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips64.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"mips64\\".*?sources \\+= ")',
           ],
         }],
-        ['v8_target_arch=="ppc" or v8_target_arch=="ppc64"', {
-          'sources': [  ### gcmole(arch:ppc) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"ppc.*?sources \+= ")',
+        ['v8_target_arch=="ppc"', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"ppc\\".*?sources \\+= ")',
+          ],
+        }],
+        ['v8_target_arch=="ppc64"', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"ppc64\\".*?sources \\+= ")',
           ],
         }],
         ['v8_target_arch=="s390x"', {
-          'sources': [  ### gcmole(arch:s390) ###
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"s390.*?sources \+= ")',
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"s390\\".*?sources \\+= ")',
           ],
         }],
+        ['v8_target_arch=="riscv64"', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"riscv64\\".*?sources \\+= ")',
+          ],
+        }],        
         ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
@@ -761,13 +919,20 @@
               'ObjectFile': '$(IntDir)%(Extension)\\',
             },
           },
+          'conditions': [
+            ['v8_enable_system_instrumentation==1', {
+              'sources': [
+                '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?is_win.*?v8_enable_system_instrumentation.*?sources \\+= ")',
+              ],
+            }],
+          ],
         }],
         ['component=="shared_library"', {
           'defines': [
             'BUILDING_V8_SHARED',
           ],
         }],
-        ['v8_enable_i18n_support', {
+        ['v8_enable_i18n_support==1', {
           'dependencies': [
             'run_gen-regexp-special-case',
           ],
@@ -800,9 +965,12 @@
         ['v8_postmortem_support', {
           'dependencies': ['postmortem-metadata#target'],
         }],
+        ['v8_enable_third_party_heap', {
+          # TODO(targos): add values from v8_third_party_heap_libs to link_settings.libraries
+        }],
         # Platforms that don't have Compare-And-Swap (CAS) support need to link atomic library
         # to implement atomic memory access
-        ['v8_current_cpu in ["mips", "mipsel", "mips64", "mips64el", "ppc"]', {
+        ['v8_current_cpu in ["mips", "mipsel", "mips64", "mips64el", "ppc", "arm", "riscv64"]', {
           'link_settings': {
             'libraries': ['-latomic', ],
           },
@@ -949,41 +1117,31 @@
         }],
         ['is_android', {
           'sources': [
-            '<(V8_ROOT)/src/base/debug/stack_trace_android.cc',
             '<(V8_ROOT)/src/base/platform/platform-posix.cc',
             '<(V8_ROOT)/src/base/platform/platform-posix.h',
             '<(V8_ROOT)/src/base/platform/platform-posix-time.cc',
             '<(V8_ROOT)/src/base/platform/platform-posix-time.h',
           ],
-          'conditions': [
-            ['_toolset=="host"', {
-              'link_settings': {
+          'link_settings': {
+            'target_conditions': [
+              ['_toolset=="host" and host_os=="linux"', {
                 'libraries': [
                   '-ldl',
                   '-lrt'
-                ]
-              },
-              'conditions': [
-                ['_toolset=="host"', {
-                  'conditions': [
-                    ['host_os == "mac"', {
-                      'sources': [
-                        '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc'
-                        '<(V8_ROOT)/src/base/platform/platform-macos.cc'
-                      ]
-                    }, {
-                       'sources': [
-                         '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc'
-                         '<(V8_ROOT)/src/base/platform/platform-linux.cc'
-                       ]
-                     }],
-                  ],
-                }, {
-                   'sources': [
-                     '<(V8_ROOT)/src/base/debug/stack_trace_android.cc'
-                     '<(V8_ROOT)/src/base/platform/platform-linux.cc'
-                   ]
-                 }],
+                ],
+              }],
+            ],
+          },
+          'target_conditions': [
+            ['_toolset=="host"', {
+              'sources': [
+                '<(V8_ROOT)/src/base/debug/stack_trace_posix.cc',
+                '<(V8_ROOT)/src/base/platform/platform-linux.cc',
+              ],
+            }, {
+              'sources': [
+                '<(V8_ROOT)/src/base/debug/stack_trace_android.cc',
+                '<(V8_ROOT)/src/base/platform/platform-linux.cc',
               ],
             }],
           ],
@@ -1006,8 +1164,12 @@
             '<(V8_ROOT)/src/base/platform/platform-win32.cc',
             '<(V8_ROOT)/src/base/win32-headers.h',
           ],
-
-          'defines': ['_CRT_RAND_S'],  # for rand_s()
+          'conditions': [
+            ['target_arch == "arm64"', {
+              'defines': ['_WIN32_WINNT=0x0602'], # For GetCurrentThreadStackLimits on Windows on Arm
+            }],
+          ],
+          'defines': ['_CRT_RAND_S'], # for rand_s()
           'direct_dependent_settings': {
             'msvs_settings': {
               'VCLinkerTool': {
@@ -1018,6 +1180,17 @@
                 ]
               }
             },
+            'conditions': [
+              ['v8_enable_system_instrumentation==1', {
+                'msvs_settings': {
+                  'VCLinkerTool': {
+                    'AdditionalDependencies': [
+                      'advapi32.lib',
+                    ],
+                  },
+                },
+              }],
+            ],
           },
         }],
         ['target_arch == "mips" or OS == "mips64"', {
@@ -1149,6 +1322,8 @@
         '<(V8_ROOT)/include/libplatform/v8-tracing.h',
         '<(V8_ROOT)/src/libplatform/default-foreground-task-runner.cc',
         '<(V8_ROOT)/src/libplatform/default-foreground-task-runner.h',
+        '<(V8_ROOT)/src/libplatform/default-job.cc',
+        '<(V8_ROOT)/src/libplatform/default-job.h',
         '<(V8_ROOT)/src/libplatform/default-platform.cc',
         '<(V8_ROOT)/src/libplatform/default-platform.h',
         '<(V8_ROOT)/src/libplatform/default-worker-threads-task-runner.cc',
@@ -1177,16 +1352,34 @@
           },
           'defines': ['BUILDING_V8_PLATFORM_SHARED'],
         }],
-        ['v8_use_perfetto', {
+        ['v8_use_perfetto==1', {
+          'sources!': [
+            '<(V8_ROOT)/base/trace_event/common/trace_event_common.h',
+            '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.cc',
+            '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.h',
+            '<(V8_ROOT)/src/libplatform/tracing/trace-object.cc',
+            '<(V8_ROOT)/src/libplatform/tracing/trace-writer.cc',
+            '<(V8_ROOT)/src/libplatform/tracing/trace-writer.h',
+          ],
           'sources': [
-            '<(V8_ROOT)/src/libplatform/tracing/json-trace-event-listener.cc',
-            '<(V8_ROOT)/src/libplatform/tracing/json-trace-event-listener.h',
             '<(V8_ROOT)/src/libplatform/tracing/trace-event-listener.cc',
             '<(V8_ROOT)/src/libplatform/tracing/trace-event-listener.h',
           ],
           'dependencies': [
             '<(V8_ROOT)/third_party/perfetto:libperfetto',
             '<(V8_ROOT)/third_party/perfetto/protos/perfetto/trace:lite',
+          ],
+        }],
+        ['v8_enable_system_instrumentation==1 and is_win', {
+          'sources': [
+            '<(V8_ROOT)/src/libplatform/tracing/recorder.h',
+            '<(V8_ROOT)/src/libplatform/tracing/recorder-win.cc',
+          ],
+        }],
+        ['v8_enable_system_instrumentation==1 and OS=="mac"', {
+          'sources': [
+            '<(V8_ROOT)/src/libplatform/tracing/recorder.h',
+            '<(V8_ROOT)/src/libplatform/tracing/recorder-mac.cc',
           ],
         }],
       ],
@@ -1212,49 +1405,6 @@
         '<(V8_ROOT)/src/libsampler/sampler.h'
       ],
     },  # v8_libsampler
-
-    # {
-    #   'target_name': 'fuzzer_support',
-    #   'type': 'static_library',
-    #   'conditions': [
-    #     ['want_separate_host_toolset', {
-    #       'toolsets': ['host', 'target'],
-    #     }],
-    #   ],
-    #   'dependencies': [
-    #     'v8',
-    #     'v8_libbase',
-    #     'v8_libplatform',
-    #     'v8_maybe_icu',
-    #   ],
-    #   'sources': [
-    #     "<(V8_ROOT)/test/fuzzer/fuzzer-support.cc",
-    #     "<(V8_ROOT)/test/fuzzer/fuzzer-support.h",
-    #   ],
-    # },  # fuzzer_support
-
-    # {
-    #   'target_name': 'wee8',
-    #   'type': 'static_library',
-    #   'dependencies': [
-    #     'v8_base',
-    #     'v8_libbase',
-    #     'v8_libplatform',
-    #     'v8_libsampler',
-    #     'v8_maybe_snapshot',
-    #     # 'build/win:default_exe_manifest',
-    #   ],
-    #   'sources': [
-    #     "<(V8_ROOT)/src/wasm/c-api.cc",
-    #     "<(V8_ROOT)/third_party/wasm-api/wasm.h",
-    #     "<(V8_ROOT)/third_party/wasm-api/wasm.hh",
-    #   ],
-    # }, # wee8
-
-    # ###############################################################################
-    # # Executablesicu_path
-    # #
-
     {
       'target_name': 'bytecode_builtins_list_generator',
       'type': 'executable',
@@ -1274,6 +1424,7 @@
         "<(V8_ROOT)/src/builtins/generate-bytecodes-builtins-list.cc",
         "<(V8_ROOT)/src/interpreter/bytecode-operands.cc",
         "<(V8_ROOT)/src/interpreter/bytecode-operands.h",
+        "<(V8_ROOT)/src/interpreter/bytecode-traits.h",
         "<(V8_ROOT)/src/interpreter/bytecodes.cc",
         "<(V8_ROOT)/src/interpreter/bytecodes.h",
       ],
@@ -1287,9 +1438,8 @@
         'v8_init',
         'v8_libbase',
         'v8_libplatform',
-        'v8_nosnapshot',
-        # "build/win:default_exe_manifest",
         'v8_maybe_icu',
+        # "build/win:default_exe_manifest",
       ],
       'sources': [
         '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"mksnapshot.*?sources = ")',
@@ -1380,6 +1530,7 @@
       ],
       'sources': [
         "<(V8_ROOT)/src/regexp/gen-regexp-special-case.cc",
+        "<(V8_ROOT)/src/regexp/special-case.h",
       ],
     },  # gen-regexp-special-case
     {
@@ -1411,6 +1562,141 @@
         },
       ],
     },  # run_gen-regexp-special-case
+    {
+      'target_name': 'cppgc_headers',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"cppgc_headers.*?sources = ")',
+        ],
+      },
+    },  # cppgc_headers
+    {
+      'target_name': 'cppgc_base',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"cppgc_base.*?sources = ")',
+        ],
+      },
+    },  # cppgc_base
+    {
+      'target_name': 'v8_bigint',
+      'type': 'none',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+      ],
+      'direct_dependent_settings': {
+        'sources': [
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"v8_bigint.*?sources = ")',
+        ],
+        'conditions': [
+          ['v8_advanced_bigint_algorithms==1', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"v8_bigint.*?v8_advanced_bigint_algorithms.*?sources \\+= ")',
+            ],
+          }],
+        ],
+      },
+    },  # v8_bigint
+    {
+      'target_name': 'v8_cppgc_shared',
+      'type': 'none',
+      'toolsets': ['host', 'target'],
+      'direct_dependent_settings': {
+        'sources': [
+          '<(V8_ROOT)/src/heap/base/stack.cc',
+          '<(V8_ROOT)/src/heap/base/stack.h',
+          '<(V8_ROOT)/src/heap/base/worklist.cc',
+          '<(V8_ROOT)/src/heap/base/worklist.h',
+        ],
+        'conditions': [
+          ['enable_lto=="true"', {
+            'cflags_cc': [ '-fno-lto' ],
+          }],
+          ['clang or OS!="win"', {
+            'conditions': [
+              ['_toolset == "host" and host_arch == "x64" or _toolset == "target" and target_arch=="x64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/x64/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "ia32" or _toolset == "target" and target_arch=="ia32"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/ia32/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "arm" or _toolset == "target" and target_arch=="arm"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/arm/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "arm64" or _toolset == "target" and target_arch=="arm64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/arm64/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "ppc64" or _toolset == "target" and target_arch=="ppc64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/ppc/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "s390x" or _toolset == "target" and target_arch=="s390x"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/s390/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "mips" or _toolset == "target" and target_arch=="mips" or _toolset == "host" and host_arch == "mipsel" or _toolset == "target" and target_arch=="mipsel"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/mips/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "mips64" or _toolset == "target" and target_arch=="mips64" or _toolset == "host" and host_arch == "mips64el" or _toolset == "target" and target_arch=="mips64el"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/mips64/push_registers_asm.cc',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "riscv64" or _toolset == "target" and target_arch=="riscv64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/riscv64/push_registers_asm.cc',
+                ],
+              }],
+            ]
+          }],
+          ['OS=="win"', {
+            'conditions': [
+              ['_toolset == "host" and host_arch == "x64" or _toolset == "target" and target_arch=="x64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/x64/push_registers_masm.S',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "ia32" or _toolset == "target" and target_arch=="ia32"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/ia32/push_registers_masm.S',
+                ],
+              }],
+              ['_toolset == "host" and host_arch == "arm64" or _toolset == "target" and target_arch=="arm64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/arm64/push_registers_masm.S',
+                ],
+              }],
+            ],
+          }],
+        ],
+      },
+    },  # v8_cppgc_shared
 
     ###############################################################################
     # Public targets
@@ -1421,7 +1707,7 @@
       'hard_dependency': 1,
       'toolsets': ['target'],
       'dependencies': [
-        'v8_maybe_snapshot'
+        'v8_snapshot',
       ],
       'conditions': [
         ['component=="shared_library"', {
@@ -1471,6 +1757,7 @@
           'variables': {
             'v8_dump_build_config_args': [
               '<(PRODUCT_DIR)/v8_build_config.json',
+              'current_cpu=<(v8_current_cpu)',
               'dcheck_always_on=<(dcheck_always_on)',
               'is_android=<(is_android)',
               'is_asan=<(asan)',
@@ -1479,21 +1766,30 @@
               'is_component_build=<(component)',
               'is_debug=<(CONFIGURATION_NAME)',
               # Not available in gyp.
+              'is_full_debug=0',
+              # Not available in gyp.
               'is_gcov_coverage=0',
               'is_msan=<(msan)',
               'is_tsan=<(tsan)',
               # Not available in gyp.
               'is_ubsan_vptr=0',
               'target_cpu=<(target_arch)',
+              'v8_current_cpu=<(v8_current_cpu)',
+              # Not available in gyp.
+              'v8_enable_atomic_marking_state=0',
+              # Not available in gyp.
+              'v8_enable_atomic_object_field_writes=0',
+              # Not available in gyp.
+              'v8_enable_concurrent_marking=0',
               'v8_enable_i18n_support=<(v8_enable_i18n_support)',
               'v8_enable_verify_predictable=<(v8_enable_verify_predictable)',
-              'v8_target_cpu=<(v8_target_arch)',
-              'v8_use_snapshot=<(v8_use_snapshot)',
-              'v8_use_siphash=<(v8_use_siphash)',
-              'v8_enable_embedded_builtins=<(v8_enable_embedded_builtins)',
               'v8_enable_verify_csa=<(v8_enable_verify_csa)',
               'v8_enable_lite_mode=<(v8_enable_lite_mode)',
               'v8_enable_pointer_compression=<(v8_enable_pointer_compression)',
+              'v8_enable_webassembly=<(v8_enable_webassembly)',
+              # Not available in gyp.
+              'v8_control_flow_integrity=0',
+              'v8_target_cpu=<(v8_target_arch)',
             ]
           },
           'conditions': [
@@ -1526,9 +1822,71 @@
           'toolsets': ['host', 'target'],
         }],
       ],
+      'dependencies': ['run_torque'],
       'variables': {
         'heapobject_files': [
-          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"postmortem-metadata.*?sources = ")',
+          '<(SHARED_INTERMEDIATE_DIR)/torque-generated/instance-types.h',
+          '<(V8_ROOT)/src/objects/allocation-site.h',
+          '<(V8_ROOT)/src/objects/allocation-site-inl.h',
+          '<(V8_ROOT)/src/objects/cell.h',
+          '<(V8_ROOT)/src/objects/cell-inl.h',
+          '<(V8_ROOT)/src/objects/code.h',
+          '<(V8_ROOT)/src/objects/code-inl.h',
+          '<(V8_ROOT)/src/objects/data-handler.h',
+          '<(V8_ROOT)/src/objects/data-handler-inl.h',
+          '<(V8_ROOT)/src/objects/descriptor-array.h',
+          '<(V8_ROOT)/src/objects/descriptor-array-inl.h',
+          '<(V8_ROOT)/src/objects/feedback-cell.h',
+          '<(V8_ROOT)/src/objects/feedback-cell-inl.h',
+          '<(V8_ROOT)/src/objects/fixed-array.h',
+          '<(V8_ROOT)/src/objects/fixed-array-inl.h',
+          '<(V8_ROOT)/src/objects/heap-number.h',
+          '<(V8_ROOT)/src/objects/heap-number-inl.h',
+          '<(V8_ROOT)/src/objects/heap-object.h',
+          '<(V8_ROOT)/src/objects/heap-object-inl.h',
+          '<(V8_ROOT)/src/objects/instance-type.h',
+          '<(V8_ROOT)/src/objects/js-array-buffer.h',
+          '<(V8_ROOT)/src/objects/js-array-buffer-inl.h',
+          '<(V8_ROOT)/src/objects/js-array.h',
+          '<(V8_ROOT)/src/objects/js-array-inl.h',
+          '<(V8_ROOT)/src/objects/js-function-inl.h',
+          '<(V8_ROOT)/src/objects/js-function.cc',
+          '<(V8_ROOT)/src/objects/js-function.h',
+          '<(V8_ROOT)/src/objects/js-objects.cc',
+          '<(V8_ROOT)/src/objects/js-objects.h',
+          '<(V8_ROOT)/src/objects/js-objects-inl.h',
+          '<(V8_ROOT)/src/objects/js-promise.h',
+          '<(V8_ROOT)/src/objects/js-promise-inl.h',
+          '<(V8_ROOT)/src/objects/js-regexp.cc',
+          '<(V8_ROOT)/src/objects/js-regexp.h',
+          '<(V8_ROOT)/src/objects/js-regexp-inl.h',
+          '<(V8_ROOT)/src/objects/js-regexp-string-iterator.h',
+          '<(V8_ROOT)/src/objects/js-regexp-string-iterator-inl.h',
+          '<(V8_ROOT)/src/objects/map.cc',
+          '<(V8_ROOT)/src/objects/map.h',
+          '<(V8_ROOT)/src/objects/map-inl.h',
+          '<(V8_ROOT)/src/objects/name.h',
+          '<(V8_ROOT)/src/objects/name-inl.h',
+          '<(V8_ROOT)/src/objects/objects.h',
+          '<(V8_ROOT)/src/objects/objects-inl.h',
+          '<(V8_ROOT)/src/objects/oddball.h',
+          '<(V8_ROOT)/src/objects/oddball-inl.h',
+          '<(V8_ROOT)/src/objects/primitive-heap-object.h',
+          '<(V8_ROOT)/src/objects/primitive-heap-object-inl.h',
+          '<(V8_ROOT)/src/objects/scope-info.h',
+          '<(V8_ROOT)/src/objects/scope-info-inl.h',
+          '<(V8_ROOT)/src/objects/script.h',
+          '<(V8_ROOT)/src/objects/script-inl.h',
+          '<(V8_ROOT)/src/objects/shared-function-info.cc',
+          '<(V8_ROOT)/src/objects/shared-function-info.h',
+          '<(V8_ROOT)/src/objects/shared-function-info-inl.h',
+          '<(V8_ROOT)/src/objects/string.cc',
+          '<(V8_ROOT)/src/objects/string-comparator.cc',
+          '<(V8_ROOT)/src/objects/string-comparator.h',
+          '<(V8_ROOT)/src/objects/string.h',
+          '<(V8_ROOT)/src/objects/string-inl.h',
+          '<(V8_ROOT)/src/objects/struct.h',
+          '<(V8_ROOT)/src/objects/struct-inl.h',
         ],
       },
       'actions': [
@@ -1553,5 +1911,70 @@
         'sources': ['<(SHARED_INTERMEDIATE_DIR)/debug-support.cc', ],
       },
     },  # postmortem-metadata
+
+    {
+      'target_name': 'v8_zlib',
+      'type': 'static_library',
+      'conditions': [
+        ['want_separate_host_toolset', {
+          'toolsets': ['host', 'target'],
+        }],
+        ['OS=="win"', {
+          'conditions': [
+            ['"<(target_arch)"=="arm64" and _toolset=="target"', {
+              'defines': ['CPU_NO_SIMD']
+            }, {
+              'defines': ['X86_WINDOWS']
+            }]
+          ]
+        }],
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(V8_ROOT)/third_party/zlib',
+          '<(V8_ROOT)/third_party/zlib/google',
+        ],
+      },
+      'defines': [ 'ZLIB_IMPLEMENTATION' ],
+      'include_dirs': [
+        '<(V8_ROOT)/third_party/zlib',
+        '<(V8_ROOT)/third_party/zlib/google',
+      ],
+      'sources': [
+        '<(V8_ROOT)/third_party/zlib/adler32.c',
+        '<(V8_ROOT)/third_party/zlib/chromeconf.h',
+        '<(V8_ROOT)/third_party/zlib/compress.c',
+        '<(V8_ROOT)/third_party/zlib/contrib/optimizations/insert_string.h',
+        '<(V8_ROOT)/third_party/zlib/contrib/optimizations/insert_string.h',
+        '<(V8_ROOT)/third_party/zlib/cpu_features.c',
+        '<(V8_ROOT)/third_party/zlib/cpu_features.h',
+        '<(V8_ROOT)/third_party/zlib/crc32.c',
+        '<(V8_ROOT)/third_party/zlib/crc32.h',
+        '<(V8_ROOT)/third_party/zlib/deflate.c',
+        '<(V8_ROOT)/third_party/zlib/deflate.h',
+        '<(V8_ROOT)/third_party/zlib/gzclose.c',
+        '<(V8_ROOT)/third_party/zlib/gzguts.h',
+        '<(V8_ROOT)/third_party/zlib/gzlib.c',
+        '<(V8_ROOT)/third_party/zlib/gzread.c',
+        '<(V8_ROOT)/third_party/zlib/gzwrite.c',
+        '<(V8_ROOT)/third_party/zlib/infback.c',
+        '<(V8_ROOT)/third_party/zlib/inffast.c',
+        '<(V8_ROOT)/third_party/zlib/inffast.h',
+        '<(V8_ROOT)/third_party/zlib/inffixed.h',
+        '<(V8_ROOT)/third_party/zlib/inflate.c',
+        '<(V8_ROOT)/third_party/zlib/inflate.h',
+        '<(V8_ROOT)/third_party/zlib/inftrees.c',
+        '<(V8_ROOT)/third_party/zlib/inftrees.h',
+        '<(V8_ROOT)/third_party/zlib/trees.c',
+        '<(V8_ROOT)/third_party/zlib/trees.h',
+        '<(V8_ROOT)/third_party/zlib/uncompr.c',
+        '<(V8_ROOT)/third_party/zlib/zconf.h',
+        '<(V8_ROOT)/third_party/zlib/zlib.h',
+        '<(V8_ROOT)/third_party/zlib/zutil.c',
+        '<(V8_ROOT)/third_party/zlib/zutil.h',
+        '<(V8_ROOT)/third_party/zlib/google/compression_utils_portable.cc',
+        '<(V8_ROOT)/third_party/zlib/google/compression_utils_portable.h',
+      ],
+    },  # v8_zlib
   ],
 }

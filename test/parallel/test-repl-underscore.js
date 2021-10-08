@@ -41,7 +41,7 @@ function testSloppyMode() {
     '30',
     '30',
     '40',
-    '30'
+    '30',
   ]);
 }
 
@@ -74,7 +74,7 @@ function testStrictMode() {
     '30',
     'undefined',
     'undefined',
-    '30'
+    '30',
   ]);
 }
 
@@ -107,7 +107,7 @@ function testMagicMode() {
     '30',
     'undefined',
     '50',
-    '30'
+    '30',
   ]);
 }
 
@@ -129,7 +129,7 @@ function testResetContext() {
     'Clearing context...',
     '10',
     '20',
-    '20'
+    '20',
   ]);
 }
 
@@ -173,13 +173,11 @@ function testError() {
       'undefined',
 
       // The error, both from the original throw and the `_error` echo.
-      'Thrown:',
-      'Error: foo',
+      'Uncaught Error: foo',
       '[Error: foo]',
 
       // The sync error, with individual property echoes
-      'Thrown:',
-      /^Error: ENOENT: no such file or directory, scandir '.*nonexistent\?'/,
+      /^Uncaught Error: ENOENT: no such file or directory, scandir '.*nonexistent\?'/,
       /Object\.readdirSync/,
       /^  errno: -(2|4058),$/,
       "  syscall: 'scandir',",
@@ -194,15 +192,14 @@ function testError() {
       'undefined',
 
       // The message from the original throw
-      'Thrown:',
-      'Error: baz',
+      'Uncaught Error: baz',
     ];
     for (const line of lines) {
       const expected = expectedLines.shift();
       if (typeof expected === 'string')
         assert.strictEqual(line, expected);
       else
-        assert(expected.test(line), `${line} should match ${expected}`);
+        assert.match(line, expected);
     }
     assert.strictEqual(expectedLines.length, 0);
 
@@ -218,9 +215,8 @@ function testError() {
       "'baz'",
       'Expression assignment to _error now disabled.',
       '0',
-      'Thrown:',
-      'Error: quux',
-      '0'
+      'Uncaught Error: quux',
+      '0',
     ]);
   });
 }

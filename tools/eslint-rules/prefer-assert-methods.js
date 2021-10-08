@@ -12,7 +12,7 @@ function parseError(method, op) {
   return `'assert.${method}' should be used instead of '${op}'`;
 }
 
-const preferedAssertMethod = {
+const preferredAssertMethod = {
   '===': 'strictEqual',
   '!==': 'notStrictEqual',
   '==': 'equal',
@@ -23,7 +23,7 @@ module.exports = function(context) {
   return {
     [astSelector]: function(node) {
       const arg = node.expression.arguments[0];
-      const assertMethod = preferedAssertMethod[arg.operator];
+      const assertMethod = preferredAssertMethod[arg.operator];
       if (assertMethod) {
         context.report({
           node,
@@ -41,4 +41,8 @@ module.exports = function(context) {
       }
     }
   };
+};
+
+module.exports.meta = {
+  fixable: 'code'
 };

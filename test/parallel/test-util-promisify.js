@@ -26,6 +26,7 @@ const stat = promisify(fs.stat);
 
 {
   function fn() {}
+
   function promisifedFn() {}
   fn[promisify.custom] = promisifedFn;
   assert.strictEqual(promisify(fn), promisifedFn);
@@ -34,10 +35,25 @@ const stat = promisify(fs.stat);
 
 {
   function fn() {}
+
+  function promisifiedFn() {}
+
+  // util.promisify.custom is a shared symbol which can be accessed
+  // as `Symbol.for("nodejs.util.promisify.custom")`.
+  const kCustomPromisifiedSymbol = Symbol.for('nodejs.util.promisify.custom');
+  fn[kCustomPromisifiedSymbol] = promisifiedFn;
+
+  assert.strictEqual(kCustomPromisifiedSymbol, promisify.custom);
+  assert.strictEqual(promisify(fn), promisifiedFn);
+  assert.strictEqual(promisify(promisify(fn)), promisifiedFn);
+}
+
+{
+  function fn() {}
   fn[promisify.custom] = 42;
-  common.expectsError(
+  assert.throws(
     () => promisify(fn),
-    { code: 'ERR_INVALID_ARG_TYPE', type: TypeError }
+    { code: 'ERR_INVALID_ARG_TYPE', name: 'TypeError' }
   );
 }
 
@@ -115,7 +131,7 @@ const stat = promisify(fs.stat);
   (async () => {
     const value = await promisify(fn)(null, 42);
     assert.strictEqual(value, 42);
-  })();
+  })().then(common.mustCall());
 }
 
 {
@@ -127,9 +143,7 @@ const stat = promisify(fs.stat);
 
   o.fn = fn;
 
-  o.fn().then(common.mustCall(function(val) {
-    assert(val);
-  }));
+  o.fn().then(common.mustCall((val) => assert(val)));
 }
 
 {
@@ -145,7 +159,7 @@ const stat = promisify(fs.stat);
     await fn();
     await Promise.resolve();
     return assert.strictEqual(stack, err.stack);
-  })();
+  })().then(common.mustCall());
 }
 
 {
@@ -179,17 +193,17 @@ const stat = promisify(fs.stat);
     }),
     b.then(assert.fail, function(e) {
       assert.strictEqual(err, e);
-    })
+    }),
   ]);
 }
 
 [undefined, null, true, 0, 'str', {}, [], Symbol()].forEach((input) => {
-  common.expectsError(
+  assert.throws(
     () => promisify(input),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "original" argument must be of type Function. ' +
-               `Received type ${typeof input}`
+      name: 'TypeError',
+      message: 'The "original" argument must be of type function.' +
+               common.invalidArgTypeHelper(input)
     });
 });

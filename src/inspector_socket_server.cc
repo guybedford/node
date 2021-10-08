@@ -234,6 +234,7 @@ void PrintDebuggerReadyMessage(
     const std::string& host,
     const std::vector<InspectorSocketServer::ServerSocketPtr>& server_sockets,
     const std::vector<std::string>& ids,
+    const char* verb,
     bool publish_uid_stderr,
     FILE* out) {
   if (!publish_uid_stderr || out == nullptr) {
@@ -241,7 +242,8 @@ void PrintDebuggerReadyMessage(
   }
   for (const auto& server_socket : server_sockets) {
     for (const std::string& id : ids) {
-      fprintf(out, "Debugger listening on %s\n",
+      fprintf(out, "Debugger %s on %s\n",
+              verb,
               FormatWsAddress(host, server_socket->port(), id, true).c_str());
     }
   }
@@ -300,6 +302,7 @@ void InspectorSocketServer::SessionTerminated(int session_id) {
       PrintDebuggerReadyMessage(host_,
                                 server_sockets_,
                                 delegate_->GetTargetIds(),
+                                "ending",
                                 inspect_publish_uid_.console,
                                 out_);
     }
@@ -373,7 +376,7 @@ void InspectorSocketServer::SendListResponse(InspectorSocket* socket,
 std::string InspectorSocketServer::GetFrontendURL(bool is_compat,
     const std::string &formatted_address) {
   std::ostringstream frontend_url;
-  frontend_url << "chrome-devtools://devtools/bundled/";
+  frontend_url << "devtools://devtools/bundled/";
   frontend_url << (is_compat ? "inspector" : "js_app");
   frontend_url << ".html?experiments=true&v8only=true&ws=";
   frontend_url << formatted_address;
@@ -425,6 +428,7 @@ bool InspectorSocketServer::Start() {
   PrintDebuggerReadyMessage(host_,
                             server_sockets_,
                             delegate_->GetTargetIds(),
+                            "listening",
                             inspect_publish_uid_.console,
                             out_);
   return true;

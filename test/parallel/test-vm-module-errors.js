@@ -6,7 +6,7 @@ const common = require('../common');
 
 const assert = require('assert');
 
-const { SourceTextModule, createContext } = require('vm');
+const { SourceTextModule, createContext, Module } = require('vm');
 
 async function createEmptyLinkedModule() {
   const m = new SourceTextModule('');
@@ -15,27 +15,27 @@ async function createEmptyLinkedModule() {
 }
 
 async function checkArgType() {
-  common.expectsError(() => {
+  assert.throws(() => {
     new SourceTextModule();
   }, {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError
+    name: 'TypeError'
   });
 
   for (const invalidOptions of [
     0, 1, null, true, 'str', () => {}, { identifier: 0 }, Symbol.iterator,
-    { context: null }, { context: 'hucairz' }, { context: {} }
+    { context: null }, { context: 'hucairz' }, { context: {} },
   ]) {
-    common.expectsError(() => {
+    assert.throws(() => {
       new SourceTextModule('', invalidOptions);
     }, {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     });
   }
 
   for (const invalidLinker of [
-    0, 1, undefined, null, true, 'str', {}, Symbol.iterator
+    0, 1, undefined, null, true, 'str', {}, Symbol.iterator,
   ]) {
     await assert.rejects(async () => {
       const m = new SourceTextModule('');
@@ -64,7 +64,7 @@ async function checkModuleState() {
     assert.strictEqual(m.status, 'linking');
     await m.link(common.mustNotCall());
   }, {
-    code: 'ERR_VM_MODULE_ALREADY_LINKED'
+    code: 'ERR_VM_MODULE_STATUS'
   });
 
   await assert.rejects(async () => {
@@ -80,13 +80,13 @@ async function checkModuleState() {
     await m.evaluate(false);
   }, {
     code: 'ERR_INVALID_ARG_TYPE',
-    message: 'The "options" argument must be of type Object. ' +
-             'Received type boolean'
+    message: 'The "options" argument must be of type object. ' +
+             'Received type boolean (false)'
   });
 
-  common.expectsError(() => {
+  assert.throws(() => {
     const m = new SourceTextModule('');
-    m.error;
+    m.error; // eslint-disable-line no-unused-expressions
   }, {
     code: 'ERR_VM_MODULE_STATUS',
     message: 'Module status must be errored'
@@ -95,15 +95,15 @@ async function checkModuleState() {
   await assert.rejects(async () => {
     const m = await createEmptyLinkedModule();
     await m.evaluate();
-    m.error;
+    m.error; // eslint-disable-line no-unused-expressions
   }, {
     code: 'ERR_VM_MODULE_STATUS',
     message: 'Module status must be errored'
   });
 
-  common.expectsError(() => {
+  assert.throws(() => {
     const m = new SourceTextModule('');
-    m.namespace;
+    m.namespace; // eslint-disable-line no-unused-expressions
   }, {
     code: 'ERR_VM_MODULE_STATUS',
     message: 'Module status must not be unlinked or linking'
@@ -156,15 +156,15 @@ async function checkLinking() {
   });
 }
 
-common.expectsError(() => {
+assert.throws(() => {
   new SourceTextModule('', {
     importModuleDynamically: 'hucairz'
   });
 }, {
   code: 'ERR_INVALID_ARG_TYPE',
-  type: TypeError,
-  message: 'The "options.importModuleDynamically"' +
-    ' property must be of type function. Received type string'
+  name: 'TypeError',
+  message: 'The "options.importModuleDynamically" property must be of type ' +
+    "function. Received type string ('hucairz')"
 });
 
 // Check the JavaScript engine deals with exceptions correctly
@@ -182,13 +182,11 @@ async function checkExecution() {
   await (async () => {
     const m = new SourceTextModule('throw new Error();');
     await m.link(common.mustNotCall());
-    const evaluatePromise = m.evaluate();
-    await evaluatePromise.catch(() => {});
-    assert.strictEqual(m.status, 'errored');
     try {
-      await evaluatePromise;
+      await m.evaluate();
     } catch (err) {
       assert.strictEqual(m.error, err);
+      assert.strictEqual(m.status, 'errored');
       return;
     }
     assert.fail('Missing expected exception');
@@ -198,15 +196,65 @@ async function checkExecution() {
 // Check for error thrown when breakOnSigint is not a boolean for evaluate()
 async function checkInvalidOptionForEvaluate() {
   await assert.rejects(async () => {
-    const m = new SourceTextModule('export const a = 1; export var b = 2');
+    const m = new SourceTextModule('export const a = 1; export let b = 2');
     await m.evaluate({ breakOnSigint: 'a-string' });
   }, {
     name: 'TypeError',
     message:
       'The "options.breakOnSigint" property must be of type boolean. ' +
-      'Received type string',
+      "Received type string ('a-string')",
     code: 'ERR_INVALID_ARG_TYPE'
   });
+
+  {
+    ['link', 'evaluate'].forEach(async (method) => {
+      await assert.rejects(async () => {
+        await Module.prototype[method]();
+      }, {
+        code: 'ERR_VM_MODULE_NOT_MODULE',
+        message: /Provided module is not an instance of Module/
+      });
+    });
+  }
+}
+
+function checkInvalidCachedData() {
+  [true, false, 'foo', {}, Array, function() {}].forEach((invalidArg) => {
+    const message = 'The "options.cachedData" property must be an ' +
+                    'instance of Buffer, TypedArray, or DataView.' +
+                    common.invalidArgTypeHelper(invalidArg);
+    assert.throws(
+      () => new SourceTextModule('import "foo";', { cachedData: invalidArg }),
+      {
+        code: 'ERR_INVALID_ARG_TYPE',
+        name: 'TypeError',
+        message,
+      }
+    );
+  });
+}
+
+function checkGettersErrors() {
+  const expectedError = {
+    code: 'ERR_VM_MODULE_NOT_MODULE',
+    message: /Provided module is not an instance of Module/
+  };
+  const getters = ['identifier', 'context', 'namespace', 'status', 'error'];
+  getters.forEach((getter) => {
+    assert.throws(() => {
+      // eslint-disable-next-line no-unused-expressions
+      Module.prototype[getter];
+    }, expectedError);
+    assert.throws(() => {
+      // eslint-disable-next-line no-unused-expressions
+      SourceTextModule.prototype[getter];
+    }, expectedError);
+  });
+  // `dependencySpecifiers` getter is just part of SourceTextModule
+  assert.throws(() => {
+    // eslint-disable-next-line no-unused-expressions
+    SourceTextModule.prototype.dependencySpecifiers;
+  }, expectedError);
 }
 
 const finished = common.mustCall();
@@ -217,5 +265,7 @@ const finished = common.mustCall();
   await checkLinking();
   await checkExecution();
   await checkInvalidOptionForEvaluate();
+  checkInvalidCachedData();
+  checkGettersErrors();
   finished();
-})();
+})().then(common.mustCall());

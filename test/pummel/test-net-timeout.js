@@ -20,7 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 'use strict';
-const common = require('../common');
+require('../common');
 const assert = require('assert');
 const net = require('net');
 
@@ -45,7 +45,6 @@ const echo_server = net.createServer((socket) => {
   });
 
   socket.on('data', (d) => {
-    console.log(d);
     socket.write(d);
   });
 
@@ -54,10 +53,11 @@ const echo_server = net.createServer((socket) => {
   });
 });
 
-echo_server.listen(common.PORT, () => {
-  console.log(`server listening at ${common.PORT}`);
+echo_server.listen(0, () => {
+  const port = echo_server.address().port;
+  console.log(`server listening at ${port}`);
 
-  const client = net.createConnection(common.PORT);
+  const client = net.createConnection(port);
   client.setEncoding('UTF8');
   client.setTimeout(0); // Disable the timeout for client
   client.on('connect', () => {
@@ -104,7 +104,4 @@ process.on('exit', () => {
   console.log(`diff = ${diff}`);
 
   assert.ok(timeout < diff);
-
-  // Allow for 800 milliseconds more
-  assert.ok(diff < timeout + 800);
 });

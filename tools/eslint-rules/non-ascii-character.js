@@ -46,12 +46,6 @@ module.exports = (context) => {
       node,
       message,
       loc: sourceCode.getLocFromIndex(offendingCharacterPosition),
-      fix: (fixer) => {
-        return fixer.replaceText(
-          node,
-          suggestion ? `${suggestion}` : ''
-        );
-      }
     });
   };
 

@@ -32,11 +32,11 @@ typedef struct UCHARBUF UCHARBUF;
 /**
  * End of file value
  */
-#define U_EOF 0xFFFFFFFF
+#define U_EOF ((int32_t)0xFFFFFFFF)
 /**
  * Error value if a sequence cannot be unescaped
  */
-#define U_ERR 0xFFFFFFFE
+#define U_ERR ((int32_t)0xFFFFFFFE)
 
 typedef struct ULine ULine;
 
@@ -49,7 +49,7 @@ struct  ULine {
  * Opens the UCHARBUF with the given file stream and code page for conversion
  * @param fileName  Name of the file to open.
  * @param codepage  The encoding of the file stream to convert to Unicode.
- *                  If *codepoge is NULL on input the API will try to autodetect
+ *                  If *codepage is NULL on input the API will try to autodetect
  *                  popular Unicode encodings
  * @param showWarning Flag to print out warnings to STDOUT
  * @param buffered  If TRUE performs a buffered read of the input file. If FALSE reads

@@ -42,7 +42,7 @@ function doTest(flags, done) {
   spawn(process.execPath,
         flags.concat([
           '--preserve-symlinks',
-          '--preserve-symlinks-main', entry_link_absolute_path
+          '--preserve-symlinks-main', entry_link_absolute_path,
         ]),
         { stdio: 'inherit' }).on('exit', (code) => {
     assert.strictEqual(code, 0);
@@ -53,5 +53,5 @@ function doTest(flags, done) {
 // First test the commonjs module loader
 doTest([], () => {
   // Now test the new loader
-  doTest(['--experimental-modules'], () => {});
+  doTest([], () => {});
 });

@@ -41,7 +41,7 @@ assert.throws(() => {
 }, {
   code: 'ERR_INVALID_ARG_TYPE',
   message: 'The "id" argument must be one of type ' +
-    'number or string. Received type object'
+    'number or string. Received an instance of Object'
 });
 
 assert.throws(() => {
@@ -50,6 +50,13 @@ assert.throws(() => {
   code: 'ERR_UNKNOWN_CREDENTIAL',
   message: 'User identifier does not exist: fhqwhgadshgnsdhjsdbkhsdabkfabkveyb'
 });
+
+// Passing -0 shouldn't crash the process
+// Refs: https://github.com/nodejs/node/issues/32750
+try { process.setuid(-0); } catch {}
+try { process.seteuid(-0); } catch {}
+try { process.setgid(-0); } catch {}
+try { process.setegid(-0); } catch {}
 
 // If we're not running as super user...
 if (process.getuid() !== 0) {
@@ -79,6 +86,7 @@ try {
   }
   process.setgid('nogroup');
 }
+
 const newgid = process.getgid();
 assert.notStrictEqual(newgid, oldgid);
 

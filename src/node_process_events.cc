@@ -1,7 +1,7 @@
-#include <cstdarg>
+#include <set>
 
 #include "env-inl.h"
-#include "node_process.h"
+#include "node_process-inl.h"
 #include "util.h"
 
 namespace node {
@@ -13,7 +13,6 @@ using v8::Just;
 using v8::Local;
 using v8::Maybe;
 using v8::MaybeLocal;
-using v8::NewStringType;
 using v8::Nothing;
 using v8::Object;
 using v8::String;
@@ -23,10 +22,14 @@ MaybeLocal<Value> ProcessEmit(Environment* env,
                               const char* event,
                               Local<Value> message) {
   // Send message to enable debug in cluster workers
-  Local<Object> process = env->process_object();
   Isolate* isolate = env->isolate();
-  Local<Value> argv[] = {OneByteString(isolate, event), message};
 
+  Local<String> event_string;
+  if (!String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(event))
+      .ToLocal(&event_string)) return MaybeLocal<Value>();
+
+  Local<Object> process = env->process_object();
+  Local<Value> argv[] = {event_string, message};
   return MakeCallback(isolate, process, "emit", arraysize(argv), argv, {0, 0});
 }
 
@@ -34,6 +37,8 @@ Maybe<bool> ProcessEmitWarningGeneric(Environment* env,
                                       const char* warning,
                                       const char* type,
                                       const char* code) {
+  if (!env->can_call_into_js()) return Just(false);
+
   HandleScope handle_scope(env->isolate());
   Context::Scope context_scope(env->context());
 
@@ -51,21 +56,18 @@ Maybe<bool> ProcessEmitWarningGeneric(Environment* env,
 
   // The caller has to be able to handle a failure anyway, so we might as well
   // do proper error checking for string creation.
-  if (!String::NewFromUtf8(env->isolate(), warning, NewStringType::kNormal)
-           .ToLocal(&args[argc++])) {
+  if (!String::NewFromUtf8(env->isolate(), warning).ToLocal(&args[argc++]))
     return Nothing<bool>();
-  }
+
   if (type != nullptr) {
     if (!String::NewFromOneByte(env->isolate(),
-                                reinterpret_cast<const uint8_t*>(type),
-                                NewStringType::kNormal)
+                                reinterpret_cast<const uint8_t*>(type))
              .ToLocal(&args[argc++])) {
       return Nothing<bool>();
     }
     if (code != nullptr &&
         !String::NewFromOneByte(env->isolate(),
-                                reinterpret_cast<const uint8_t*>(code),
-                                NewStringType::kNormal)
+                                reinterpret_cast<const uint8_t*>(code))
              .ToLocal(&args[argc++])) {
       return Nothing<bool>();
     }
@@ -81,16 +83,19 @@ Maybe<bool> ProcessEmitWarningGeneric(Environment* env,
   return Just(true);
 }
 
-// Call process.emitWarning(str), fmt is a snprintf() format string
-Maybe<bool> ProcessEmitWarning(Environment* env, const char* fmt, ...) {
-  char warning[1024];
-  va_list ap;
 
-  va_start(ap, fmt);
-  vsnprintf(warning, sizeof(warning), fmt, ap);
-  va_end(ap);
+std::set<std::string> experimental_warnings;
 
-  return ProcessEmitWarningGeneric(env, warning);
+Maybe<bool> ProcessEmitExperimentalWarning(Environment* env,
+                                          const char* warning) {
+  if (experimental_warnings.find(warning) != experimental_warnings.end())
+    return Nothing<bool>();
+
+  experimental_warnings.insert(warning);
+  std::string message(warning);
+  message.append(
+      " is an experimental feature. This feature could change at any time");
+  return ProcessEmitWarningGeneric(env, message.c_str(), "ExperimentalWarning");
 }
 
 Maybe<bool> ProcessEmitDeprecationWarning(Environment* env,

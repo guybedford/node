@@ -24,14 +24,15 @@ const common = require('../common');
 const assert = require('assert');
 const net = require('net');
 
-const server = net.createServer(common.mustCall(function(s) {
+const server = net.createServer(common.mustCall((s) => {
   console.error('SERVER: got connection');
   s.end();
 }));
 
-server.listen(0, common.mustCall(function() {
-  const c = net.createConnection(this.address().port);
-  c.on('close', common.mustCall(function() {
+server.listen(0, common.mustCall(() => {
+  const c = net.createConnection(server.address().port);
+  c.on('close', common.mustCall(() => {
+    /* eslint-disable no-unused-expressions */
     console.error('connection closed');
     assert.strictEqual(c._handle, null);
     // Calling functions / accessing properties of a closed socket should not
@@ -45,5 +46,6 @@ server.listen(0, common.mustCall(function() {
     c.remoteAddress;
     c.remotePort;
     server.close();
+    /* eslint-enable no-unused-expressions */
   }));
 }));

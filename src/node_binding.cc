@@ -1,9 +1,12 @@
 #include "node_binding.h"
-#include "node_errors.h"
 #include <atomic>
 #include "env-inl.h"
+#include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_native_module_env.h"
 #include "util.h"
+
+#include <string>
 
 #if HAVE_OPENSSL
 #define NODE_BUILTIN_OPENSSL_MODULES(V) V(crypto) V(tls_wrap)
@@ -15,12 +18,6 @@
 #define NODE_BUILTIN_ICU_MODULES(V) V(icu)
 #else
 #define NODE_BUILTIN_ICU_MODULES(V)
-#endif
-
-#if NODE_REPORT
-#define NODE_BUILTIN_REPORT_MODULES(V) V(report)
-#else
-#define NODE_BUILTIN_REPORT_MODULES(V)
 #endif
 
 #if HAVE_INSPECTOR
@@ -43,12 +40,13 @@
 // __attribute__((constructor)) like mechanism in GCC.
 #define NODE_BUILTIN_STANDARD_MODULES(V)                                       \
   V(async_wrap)                                                                \
+  V(blob)                                                                      \
+  V(block_list)                                                                \
   V(buffer)                                                                    \
   V(cares_wrap)                                                                \
   V(config)                                                                    \
   V(contextify)                                                                \
   V(credentials)                                                               \
-  V(domain)                                                                    \
   V(errors)                                                                    \
   V(fs)                                                                        \
   V(fs_dir)                                                                    \
@@ -58,6 +56,7 @@
   V(http_parser)                                                               \
   V(inspector)                                                                 \
   V(js_stream)                                                                 \
+  V(js_udp_wrap)                                                               \
   V(messaging)                                                                 \
   V(module_wrap)                                                               \
   V(native_module)                                                             \
@@ -67,6 +66,7 @@
   V(pipe_wrap)                                                                 \
   V(process_wrap)                                                              \
   V(process_methods)                                                           \
+  V(report)                                                                    \
   V(serdes)                                                                    \
   V(signal_wrap)                                                               \
   V(spawn_sync)                                                                \
@@ -85,14 +85,15 @@
   V(util)                                                                      \
   V(uv)                                                                        \
   V(v8)                                                                        \
+  V(wasi)                                                                      \
   V(worker)                                                                    \
+  V(watchdog)                                                                  \
   V(zlib)
 
 #define NODE_BUILTIN_MODULES(V)                                                \
   NODE_BUILTIN_STANDARD_MODULES(V)                                             \
   NODE_BUILTIN_OPENSSL_MODULES(V)                                              \
   NODE_BUILTIN_ICU_MODULES(V)                                                  \
-  NODE_BUILTIN_REPORT_MODULES(V)                                               \
   NODE_BUILTIN_PROFILER_MODULES(V)                                             \
   NODE_BUILTIN_DTRACE_MODULES(V)
 
@@ -152,7 +153,7 @@ void* wrapped_dlopen(const char* filename, int flags) {
   Mutex::ScopedLock lock(dlhandles_mutex);
 
   uv_fs_t req;
-  OnScopeLeave cleanup([&]() { uv_fs_req_cleanup(&req); });
+  auto cleanup = OnScopeLeave([&]() { uv_fs_req_cleanup(&req); });
   int rc = uv_fs_stat(nullptr, &req, filename, nullptr);
 
   if (rc != 0) {
@@ -234,9 +235,9 @@ namespace node {
 
 using v8::Context;
 using v8::Exception;
+using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -414,18 +415,24 @@ inline napi_addon_register_func GetNapiInitializerCallback(DLib* dlib) {
 // cache that's a plain C list or hash table that's shared across contexts?
 void DLOpen(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+
+  if (env->no_native_addons()) {
+    return THROW_ERR_DLOPEN_DISABLED(
+      env, "Cannot load native addon because loading addons is disabled.");
+  }
+
   auto context = env->context();
 
   CHECK_NULL(thread_local_modpending);
 
   if (args.Length() < 2) {
-    env->ThrowError("process.dlopen needs at least 2 arguments.");
-    return;
+    return THROW_ERR_MISSING_ARGS(
+        env, "process.dlopen needs at least 2 arguments");
   }
 
   int32_t flags = DLib::kDefaultFlags;
   if (args.Length() > 2 && !args[2]->Int32Value(context).To(&flags)) {
-    return env->ThrowTypeError("flag argument must be an integer.");
+    return THROW_ERR_INVALID_ARG_TYPE(env, "flag argument must be an integer.");
   }
 
   Local<Object> module;
@@ -451,21 +458,19 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
     thread_local_modpending = nullptr;
 
     if (!is_opened) {
-      Local<String> errmsg =
-          OneByteString(env->isolate(), dlib->errmsg_.c_str());
+      std::string errmsg = dlib->errmsg_.c_str();
       dlib->Close();
 #ifdef _WIN32
       // Windows needs to add the filename into the error message
-      errmsg = String::Concat(
-          env->isolate(), errmsg, args[1]->ToString(context).ToLocalChecked());
+      errmsg += *filename;
 #endif  // _WIN32
-      env->isolate()->ThrowException(Exception::Error(errmsg));
+      THROW_ERR_DLOPEN_FAILED(env, errmsg.c_str());
       return false;
     }
 
     if (mp != nullptr) {
       if (mp->nm_context_register_func == nullptr) {
-        if (env->options()->force_context_aware) {
+        if (env->force_context_aware()) {
           dlib->Close();
           THROW_ERR_NON_CONTEXT_AWARE_DISABLED(env);
           return false;
@@ -484,7 +489,12 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
         mp = dlib->GetSavedModuleFromGlobalHandleMap();
         if (mp == nullptr || mp->nm_context_register_func == nullptr) {
           dlib->Close();
-          env->ThrowError("Module did not self-register.");
+          char errmsg[1024];
+          snprintf(errmsg,
+                   sizeof(errmsg),
+                   "Module did not self-register: '%s'.",
+                   *filename);
+          THROW_ERR_DLOPEN_FAILED(env, errmsg);
           return false;
         }
       }
@@ -515,7 +525,7 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
       // NOTE: `mp` is allocated inside of the shared library's memory, calling
       // `dlclose` will deallocate it
       dlib->Close();
-      env->ThrowError(errmsg);
+      THROW_ERR_DLOPEN_FAILED(env, errmsg);
       return false;
     }
     CHECK_EQ(mp->nm_flags & NM_F_BUILTIN, 0);
@@ -528,7 +538,7 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
       mp->nm_register_func(exports, module, mp->nm_priv);
     } else {
       dlib->Close();
-      env->ThrowError("Module has no declared entry point.");
+      THROW_ERR_DLOPEN_FAILED(env, "Module has no declared entry point.");
       return false;
     }
 
@@ -552,29 +562,19 @@ inline struct node_module* FindModule(struct node_module* list,
   return mp;
 }
 
-node_module* get_internal_module(const char* name) {
-  return FindModule(modlist_internal, name, NM_F_INTERNAL);
-}
-node_module* get_linked_module(const char* name) {
-  return FindModule(modlist_linked, name, NM_F_LINKED);
-}
-
 static Local<Object> InitModule(Environment* env,
                                 node_module* mod,
                                 Local<String> module) {
-  Local<Object> exports = Object::New(env->isolate());
   // Internal bindings don't have a "module" object, only exports.
+  Local<Function> ctor = env->binding_data_ctor_template()
+                             ->GetFunction(env->context())
+                             .ToLocalChecked();
+  Local<Object> exports = ctor->NewInstance(env->context()).ToLocalChecked();
   CHECK_NULL(mod->nm_register_func);
   CHECK_NOT_NULL(mod->nm_context_register_func);
   Local<Value> unused = Undefined(env->isolate());
   mod->nm_context_register_func(exports, unused, env->context(), mod->nm_priv);
   return exports;
-}
-
-static void ThrowIfNoSuchModule(Environment* env, const char* module_v) {
-  char errmsg[1024];
-  snprintf(errmsg, sizeof(errmsg), "No such module: %s", module_v);
-  env->ThrowError(errmsg);
 }
 
 void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
@@ -586,9 +586,10 @@ void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
   node::Utf8Value module_v(env->isolate(), module);
   Local<Object> exports;
 
-  node_module* mod = get_internal_module(*module_v);
+  node_module* mod = FindModule(modlist_internal, *module_v, NM_F_INTERNAL);
   if (mod != nullptr) {
     exports = InitModule(env, mod, module);
+    env->internal_bindings.insert(mod);
   } else if (!strcmp(*module_v, "constants")) {
     exports = Object::New(env->isolate());
     CHECK(
@@ -605,7 +606,9 @@ void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
                         env->isolate()))
               .FromJust());
   } else {
-    return ThrowIfNoSuchModule(env, *module_v);
+    char errmsg[1024];
+    snprintf(errmsg, sizeof(errmsg), "No such module: %s", *module_v);
+    return THROW_ERR_INVALID_MODULE(env, errmsg);
   }
 
   args.GetReturnValue().Set(exports);
@@ -619,7 +622,20 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
   Local<String> module_name = args[0].As<String>();
 
   node::Utf8Value module_name_v(env->isolate(), module_name);
-  node_module* mod = get_linked_module(*module_name_v);
+  const char* name = *module_name_v;
+  node_module* mod = nullptr;
+
+  // Iterate from here to the nearest non-Worker Environment to see if there's
+  // a linked binding defined locally rather than through the global list.
+  Environment* cur_env = env;
+  while (mod == nullptr && cur_env != nullptr) {
+    Mutex::ScopedLock lock(cur_env->extra_linked_bindings_mutex());
+    mod = FindModule(cur_env->extra_linked_bindings_head(), name, NM_F_LINKED);
+    cur_env = cur_env->worker_parent_env();
+  }
+
+  if (mod == nullptr)
+    mod = FindModule(modlist_linked, name, NM_F_LINKED);
 
   if (mod == nullptr) {
     char errmsg[1024];
@@ -627,14 +643,13 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
              sizeof(errmsg),
              "No such module was linked: %s",
              *module_name_v);
-    return env->ThrowError(errmsg);
+    return THROW_ERR_INVALID_MODULE(env, errmsg);
   }
 
   Local<Object> module = Object::New(env->isolate());
   Local<Object> exports = Object::New(env->isolate());
   Local<String> exports_prop =
-      String::NewFromUtf8(env->isolate(), "exports", NewStringType::kNormal)
-          .ToLocalChecked();
+      String::NewFromUtf8Literal(env->isolate(), "exports");
   module->Set(env->context(), exports_prop, exports).Check();
 
   if (mod->nm_context_register_func != nullptr) {
@@ -643,7 +658,9 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
   } else if (mod->nm_register_func != nullptr) {
     mod->nm_register_func(exports, module, mod->nm_priv);
   } else {
-    return env->ThrowError("Linked module has no declared entry point.");
+    return THROW_ERR_INVALID_MODULE(
+        env,
+        "Linked moduled has no declared entry point.");
   }
 
   auto effective_exports =
@@ -660,5 +677,13 @@ void RegisterBuiltinModules() {
 #undef V
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetLinkedBinding);
+  registry->Register(GetInternalBinding);
+}
+
 }  // namespace binding
 }  // namespace node
+
+NODE_MODULE_EXTERNAL_REFERENCE(binding,
+                               node::binding::RegisterExternalReferences)

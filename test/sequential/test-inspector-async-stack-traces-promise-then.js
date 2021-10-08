@@ -27,7 +27,7 @@ async function runTests() {
       'params': { 'maxDepth': 10 } },
     { 'method': 'Debugger.setBlackboxPatterns',
       'params': { 'patterns': [] } },
-    { 'method': 'Runtime.runIfWaitingForDebugger' }
+    { 'method': 'Runtime.runIfWaitingForDebugger' },
   ]);
 
   await session.waitForBreakOnLine(0, '[eval]');
@@ -68,4 +68,4 @@ function assertArrayIncludes(actual, expected) {
     `Expected ${actualString} to contain ${expectedString}.`);
 }
 
-runTests();
+runTests().then(common.mustCall());

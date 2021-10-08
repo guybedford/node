@@ -16,10 +16,11 @@ if (process.env.CHILD) {
   return tls.createServer({});
 }
 
-const env = Object.assign({}, process.env, {
+const env = {
+  ...process.env,
   CHILD: 'yes',
   NODE_EXTRA_CA_CERTS: `${fixtures.fixturesDir}/no-such-file-exists-🐢`,
-});
+};
 
 const opts = {
   env: env,
@@ -37,7 +38,7 @@ fork(__filename, opts)
     // encoding-wise
     if (!common.isWindows) {
       const re = /Warning: Ignoring extra certs from.*no-such-file-exists-🐢.* load failed:.*No such file or directory/;
-      assert(re.test(stderr), stderr);
+      assert.match(stderr, re);
     }
   }))
   .stderr.setEncoding('utf8').on('data', function(str) {

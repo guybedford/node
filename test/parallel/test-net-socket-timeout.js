@@ -28,12 +28,12 @@ const { inspect } = require('util');
 // Verify that invalid delays throw
 const s = new net.Socket();
 const nonNumericDelays = [
-  '100', true, false, undefined, null, '', {}, () => {}, []
+  '100', true, false, undefined, null, '', {}, () => {}, [],
 ];
 const badRangeDelays = [-0.001, -1, -Infinity, Infinity, NaN];
 const validDelays = [0, 0.001, 1, 1e6];
 const invalidCallbacks = [
-  1, '100', true, false, null, {}, [], Symbol('test')
+  1, '100', true, false, null, {}, [], Symbol('test'),
 ];
 
 
@@ -55,11 +55,11 @@ for (let i = 0; i < validDelays.length; i++) {
 
 for (let i = 0; i < invalidCallbacks.length; i++) {
   [0, 1].forEach((mesc) =>
-    common.expectsError(
+    assert.throws(
       () => s.setTimeout(mesc, invalidCallbacks[i]),
       {
         code: 'ERR_INVALID_CALLBACK',
-        type: TypeError,
+        name: 'TypeError',
         message: 'Callback must be a function. ' +
                  `Received ${inspect(invalidCallbacks[i])}`
       }
@@ -70,8 +70,12 @@ for (let i = 0; i < invalidCallbacks.length; i++) {
 const server = net.Server();
 server.listen(0, common.mustCall(() => {
   const socket = net.createConnection(server.address().port);
-  socket.setTimeout(1, common.mustCall(() => {
-    socket.destroy();
-    server.close();
-  }));
+  assert.strictEqual(
+    socket.setTimeout(1, common.mustCall(() => {
+      socket.destroy();
+      assert.strictEqual(socket.setTimeout(1, common.mustNotCall()), socket);
+      server.close();
+    })),
+    socket
+  );
 }));

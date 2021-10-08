@@ -9,15 +9,16 @@ const vm = require('vm');
   [32, 'latin1'],
   [NaN, 'utf8'],
   [{}, 'latin1'],
-  []
+  [],
 ].forEach((args) => {
-  common.expectsError(
+  assert.throws(
     () => Buffer.byteLength(...args),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "string" argument must be one of type string, ' +
-               `Buffer, or ArrayBuffer. Received type ${typeof args[0]}`
+      name: 'TypeError',
+      message: 'The "string" argument must be of type string or an instance ' +
+               'of Buffer or ArrayBuffer.' +
+               common.invalidArgTypeHelper(args[0])
     }
   );
 });
@@ -90,9 +91,19 @@ assert.strictEqual(Buffer.byteLength('aGkk', 'base64'), 3);
 assert.strictEqual(
   Buffer.byteLength('bHNrZGZsa3NqZmtsc2xrZmFqc2RsZmtqcw==', 'base64'), 25
 );
+// base64url
+assert.strictEqual(Buffer.byteLength('aGVsbG8gd29ybGQ', 'base64url'), 11);
+assert.strictEqual(Buffer.byteLength('aGVsbG8gd29ybGQ', 'BASE64URL'), 11);
+assert.strictEqual(Buffer.byteLength('bm9kZS5qcyByb2NrcyE', 'base64url'), 14);
+assert.strictEqual(Buffer.byteLength('aGkk', 'base64url'), 3);
+assert.strictEqual(
+  Buffer.byteLength('bHNrZGZsa3NqZmtsc2xrZmFqc2RsZmtqcw', 'base64url'), 25
+);
 // special padding
 assert.strictEqual(Buffer.byteLength('aaa=', 'base64'), 2);
 assert.strictEqual(Buffer.byteLength('aaaa==', 'base64'), 3);
+assert.strictEqual(Buffer.byteLength('aaa=', 'base64url'), 2);
+assert.strictEqual(Buffer.byteLength('aaaa==', 'base64url'), 3);
 
 assert.strictEqual(Buffer.byteLength('Il était tué'), 14);
 assert.strictEqual(Buffer.byteLength('Il était tué', 'utf8'), 14);

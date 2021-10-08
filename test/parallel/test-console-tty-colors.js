@@ -10,7 +10,7 @@ function check(isTTY, colorMode, expectedColorMode, inspectOptions) {
     1,
     { a: 2 },
     [ 'foo' ],
-    { '\\a': '\\bar' }
+    { '\\a': '\\bar' },
   ];
 
   let i = 0;
@@ -86,7 +86,7 @@ check(false, false, false);
         });
       },
       {
-        message: 'Option "inspectOptions.color" can not be used in ' +
+        message: 'Option "options.inspectOptions.color" cannot be used in ' +
                  'combination with option "colorMode"',
         code: 'ERR_INCOMPATIBLE_OPTION_PAIR'
       }

@@ -23,31 +23,30 @@
 const common = require('../common');
 const assert = require('assert');
 const fs = require('fs');
-const URL = require('url').URL;
 
 function check(async, sync) {
   const argsSync = Array.prototype.slice.call(arguments, 2);
   const argsAsync = argsSync.concat(common.mustNotCall());
 
   if (sync) {
-    common.expectsError(
+    assert.throws(
       () => {
         sync.apply(null, argsSync);
       },
       {
         code: 'ERR_INVALID_ARG_VALUE',
-        type: TypeError,
+        name: 'TypeError',
       });
   }
 
   if (async) {
-    common.expectsError(
+    assert.throws(
       () => {
         async.apply(null, argsAsync);
       },
       {
         code: 'ERR_INVALID_ARG_VALUE',
-        type: TypeError
+        name: 'TypeError'
       });
   }
 }

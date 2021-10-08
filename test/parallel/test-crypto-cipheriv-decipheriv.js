@@ -87,31 +87,27 @@ function testCipher3(key, iv) {
   assert(instance instanceof Cipheriv, 'Cipheriv is expected to return a new ' +
                                        'instance when called without `new`');
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createCipheriv(null),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
+      name: 'TypeError',
       message: 'The "cipher" argument must be of type string. ' +
-               'Received type object'
+               'Received null'
     });
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createCipheriv('des-ede3-cbc', null),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "key" argument must be one of type Buffer, TypedArray, ' +
-               'DataView, string, or KeyObject. Received type object'
+      name: 'TypeError',
     });
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createCipheriv('des-ede3-cbc', key, 10),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "iv" argument must be one of type string, Buffer, ' +
-               'TypedArray, or DataView. Received type number'
+      name: 'TypeError',
     });
 }
 
@@ -124,31 +120,27 @@ function testCipher3(key, iv) {
   assert(instance instanceof Decipheriv, 'Decipheriv expected to return a new' +
                                          ' instance when called without `new`');
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createDecipheriv(null),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
+      name: 'TypeError',
       message: 'The "cipher" argument must be of type string. ' +
-               'Received type object'
+               'Received null'
     });
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createDecipheriv('des-ede3-cbc', null),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "key" argument must be one of type Buffer, TypedArray, ' +
-               'DataView, string, or KeyObject. Received type object'
+      name: 'TypeError',
     });
 
-  common.expectsError(
+  assert.throws(
     () => crypto.createDecipheriv('des-ede3-cbc', key, 10),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
-      message: 'The "iv" argument must be one of type string, Buffer, ' +
-               'TypedArray, or DataView. Received type number'
+      name: 'TypeError',
     });
 }
 
@@ -167,7 +159,7 @@ if (!common.hasFipsCrypto) {
 crypto.createCipheriv('aes-128-ecb', Buffer.alloc(16), Buffer.alloc(0));
 crypto.createCipheriv('aes-128-ecb', Buffer.alloc(16), null);
 
-const errMessage = /Invalid IV length/;
+const errMessage = /Invalid initialization vector/;
 
 // But non-empty IVs should be rejected.
 for (let n = 1; n < 256; n += 1) {
@@ -192,7 +184,7 @@ for (let n = 0; n < 256; n += 1) {
 // And so should null be.
 assert.throws(() => {
   crypto.createCipheriv('aes-128-cbc', Buffer.alloc(16), null);
-}, /Missing IV for cipher aes-128-cbc/);
+}, /Invalid initialization vector/);
 
 // Zero-sized IV should be rejected in GCM mode.
 assert.throws(
@@ -201,7 +193,9 @@ assert.throws(
   errMessage);
 
 // But all other IV lengths should be accepted.
-for (let n = 1; n < 256; n += 1) {
+const minIvLength = common.hasOpenSSL3 ? 8 : 1;
+const maxIvLength = common.hasOpenSSL3 ? 64 : 256;
+for (let n = minIvLength; n < maxIvLength; n += 1) {
   if (common.hasFipsCrypto && n < 12) continue;
   crypto.createCipheriv('aes-128-gcm', Buffer.alloc(16), Buffer.alloc(n));
 }
@@ -210,7 +204,11 @@ for (let n = 1; n < 256; n += 1) {
   // Passing an invalid cipher name should throw.
   assert.throws(
     () => crypto.createCipheriv('aes-127', Buffer.alloc(16), null),
-    /Unknown cipher/);
+    {
+      name: 'Error',
+      code: 'ERR_CRYPTO_UNKNOWN_CIPHER',
+      message: 'Unknown cipher'
+    });
 
   // Passing a key with an invalid length should throw.
   assert.throws(

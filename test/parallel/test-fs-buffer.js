@@ -9,32 +9,29 @@ const path = require('path');
 const tmpdir = require('../common/tmpdir');
 tmpdir.refresh();
 
-fs.access(Buffer.from(tmpdir.path), common.mustCall(assert.ifError));
+fs.access(Buffer.from(tmpdir.path), common.mustSucceed());
 
 const buf = Buffer.from(path.join(tmpdir.path, 'a.txt'));
-fs.open(buf, 'w+', common.mustCall((err, fd) => {
-  assert.ifError(err);
+fs.open(buf, 'w+', common.mustSucceed((fd) => {
   assert(fd);
-  fs.close(fd, common.mustCall(assert.ifError));
+  fs.close(fd, common.mustSucceed());
 }));
 
-common.expectsError(
+assert.throws(
   () => {
     fs.accessSync(true);
   },
   {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError,
-    message: 'The "path" argument must be one of type string, Buffer, or URL.' +
-             ' Received type boolean'
+    name: 'TypeError',
+    message: 'The "path" argument must be of type string or an instance of ' +
+             'Buffer or URL. Received type boolean (true)'
   }
 );
 
 const dir = Buffer.from(fixtures.fixturesDir);
-fs.readdir(dir, 'hex', common.mustCall((err, hexList) => {
-  assert.ifError(err);
-  fs.readdir(dir, common.mustCall((err, stringList) => {
-    assert.ifError(err);
+fs.readdir(dir, 'hex', common.mustSucceed((hexList) => {
+  fs.readdir(dir, common.mustSucceed((stringList) => {
     stringList.forEach((val, idx) => {
       const fromHexList = Buffer.from(hexList[idx], 'hex').toString();
       assert.strictEqual(

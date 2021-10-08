@@ -1,8 +1,8 @@
-// Flags: --experimental-modules --experimental-loader ./test/fixtures/es-module-loaders/loader-unknown-builtin-module.mjs
+// Flags: --experimental-loader ./test/fixtures/es-module-loaders/loader-unknown-builtin-module.mjs
 import { expectsError, mustCall } from '../common/index.mjs';
 import assert from 'assert';
 
-const unknownBuiltinModule = 'unknown-builtin-module';
+const unknownBuiltinModule = 'node:unknown-builtin-module';
 
 import(unknownBuiltinModule)
 .then(assert.fail, expectsError({

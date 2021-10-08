@@ -18,7 +18,15 @@ async function setupDebugger(session) {
     { 'method': 'Runtime.runIfWaitingForDebugger' },
   ];
   session.send(commands);
-  await session.waitForNotification('Runtime.consoleAPICalled');
+
+  await session.waitForNotification('Debugger.paused', 'Initial pause');
+
+  // NOTE(mmarchini): We wait for the second console.log to ensure we loaded
+  // every internal module before pausing. See
+  // https://bugs.chromium.org/p/v8/issues/detail?id=10287.
+  const waitForReady = session.waitForConsoleOutput('log', 'Ready!');
+  session.send({ 'method': 'Debugger.resume' });
+  await waitForReady;
 }
 
 async function breakOnLine(session) {
@@ -28,9 +36,7 @@ async function breakOnLine(session) {
       'params': { 'lineNumber': 9,
                   'url': pathToFileURL(script).toString(),
                   'columnNumber': 0,
-                  'condition': ''
-      }
-    },
+                  'condition': '' } },
     { 'method': 'Runtime.evaluate',
       'params': { 'expression': 'sum()',
                   'objectGroup': 'console',
@@ -40,9 +46,7 @@ async function breakOnLine(session) {
                   'returnByValue': false,
                   'generatePreview': true,
                   'userGesture': true,
-                  'awaitPromise': false
-      }
-    }
+                  'awaitPromise': false } },
   ];
   session.send(commands);
   await session.waitForBreakOnLine(9, pathToFileURL(script).toString());
@@ -56,7 +60,9 @@ async function stepOverConsoleStatement(session) {
 }
 
 async function runTests() {
-  const child = new NodeInstance(['--inspect=0'], undefined, script);
+  // NOTE(mmarchini): Use --inspect-brk to improve avoid undeterministic
+  // behavior.
+  const child = new NodeInstance(['--inspect-brk=0'], undefined, script);
   const session = await child.connectInspectorSession();
   await setupDebugger(session);
   await breakOnLine(session);
@@ -65,4 +71,4 @@ async function runTests() {
   assert.strictEqual((await child.expectShutdown()).exitCode, 0);
 }
 
-runTests();
+runTests().then(common.mustCall());

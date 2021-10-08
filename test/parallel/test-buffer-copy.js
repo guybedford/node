@@ -1,6 +1,6 @@
 'use strict';
 
-const common = require('../common');
+require('../common');
 const assert = require('assert');
 
 const b = Buffer.allocUnsafe(1024);
@@ -31,6 +31,17 @@ let cntr = 0;
 }
 
 {
+  // Floats will be converted to integers via `Math.floor`
+  b.fill(++cntr);
+  c.fill(++cntr);
+  const copied = b.copy(c, 0, 0, 512.5);
+  assert.strictEqual(copied, 512);
+  for (let i = 0; i < c.length; i++) {
+    assert.strictEqual(c[i], b[i]);
+  }
+}
+
+{
   // Copy c into b, without specifying sourceEnd
   b.fill(++cntr);
   c.fill(++cntr);
@@ -46,6 +57,17 @@ let cntr = 0;
   b.fill(++cntr);
   c.fill(++cntr);
   const copied = c.copy(b, 0);
+  assert.strictEqual(copied, c.length);
+  for (let i = 0; i < c.length; i++) {
+    assert.strictEqual(b[i], c[i]);
+  }
+}
+
+{
+  // Copied source range greater than source length
+  b.fill(++cntr);
+  c.fill(++cntr);
+  const copied = c.copy(b, 0, 0, c.length + 1);
   assert.strictEqual(copied, c.length);
   for (let i = 0; i < c.length; i++) {
     assert.strictEqual(b[i], c[i]);
@@ -107,12 +129,32 @@ bb.fill('hello crazy world');
 // Try to copy from before the beginning of b. Should not throw.
 b.copy(c, 0, 100, 10);
 
+// Throw with invalid source type
+assert.throws(
+  () => Buffer.prototype.copy.call(0),
+  {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+  }
+);
+
+// Copy throws at negative targetStart
+assert.throws(
+  () => Buffer.allocUnsafe(5).copy(Buffer.allocUnsafe(5), -1, 0),
+  {
+    code: 'ERR_OUT_OF_RANGE',
+    name: 'RangeError',
+    message: 'The value of "targetStart" is out of range. ' +
+             'It must be >= 0. Received -1'
+  }
+);
+
 // Copy throws at negative sourceStart
-common.expectsError(
+assert.throws(
   () => Buffer.allocUnsafe(5).copy(Buffer.allocUnsafe(5), 0, -1),
   {
     code: 'ERR_OUT_OF_RANGE',
-    type: RangeError,
+    name: 'RangeError',
     message: 'The value of "sourceStart" is out of range. ' +
              'It must be >= 0. Received -1'
   }
@@ -129,11 +171,11 @@ common.expectsError(
 }
 
 // Throw with negative sourceEnd
-common.expectsError(
+assert.throws(
   () => b.copy(c, 0, 0, -1),
   {
     code: 'ERR_OUT_OF_RANGE',
-    type: RangeError,
+    name: 'RangeError',
     message: 'The value of "sourceEnd" is out of range. ' +
              'It must be >= 0. Received -1'
   }

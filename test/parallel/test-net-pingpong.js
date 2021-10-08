@@ -39,8 +39,7 @@ function pingPongTest(port, host) {
     assert.strictEqual(socket.server, server);
     assert.strictEqual(
       server,
-      server.getConnections(common.mustCall(function(err, connections) {
-        assert.ifError(err);
+      server.getConnections(common.mustSucceed((connections) => {
         assert.strictEqual(connections, 1);
       }))
     );
@@ -103,10 +102,9 @@ function pingPongTest(port, host) {
         assert.strictEqual(client.writable, false);
         assert.strictEqual(client.readable, true);
         return;
-      } else {
-        assert.strictEqual(client.writable, true);
-        assert.strictEqual(client.readable, true);
       }
+      assert.strictEqual(client.writable, true);
+      assert.strictEqual(client.readable, true);
 
       if (count < N) {
         client.write('PING');
@@ -132,6 +130,4 @@ const tmpdir = require('../common/tmpdir');
 tmpdir.refresh();
 pingPongTest(common.PIPE);
 pingPongTest(0);
-pingPongTest(0, 'localhost');
-if (common.hasIPv6)
-  pingPongTest(0, '::1');
+if (common.hasIPv6) pingPongTest(0, '::1'); else pingPongTest(0, '127.0.0.1');

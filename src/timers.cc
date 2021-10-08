@@ -1,4 +1,5 @@
 #include "env-inl.h"
+#include "node_external_reference.h"
 #include "util-inl.h"
 #include "v8.h"
 
@@ -7,11 +8,9 @@
 namespace node {
 namespace {
 
-using v8::Array;
 using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
-using v8::Integer;
 using v8::Local;
 using v8::Object;
 using v8::Value;
@@ -59,9 +58,16 @@ void Initialize(Local<Object> target,
               FIXED_ONE_BYTE_STRING(env->isolate(), "immediateInfo"),
               env->immediate_info()->fields().GetJSArray()).Check();
 }
-
-
 }  // anonymous namespace
+void RegisterTimerExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetLibuvNow);
+  registry->Register(SetupTimers);
+  registry->Register(ScheduleTimer);
+  registry->Register(ToggleTimerRef);
+  registry->Register(ToggleImmediateRef);
+}
+
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(timers, node::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(timers, node::RegisterTimerExternalReferences)

@@ -26,6 +26,9 @@ const common = require('../common');
 if (common.isOSX)
   common.skip('macOS may allow ordinary processes to use any port');
 
+if (common.isIBMi)
+  common.skip('IBMi may allow ordinary processes to use any port');
+
 if (common.isWindows)
   common.skip('not reliable on Windows');
 
@@ -36,8 +39,8 @@ const assert = require('assert');
 const cluster = require('cluster');
 const net = require('net');
 
-if (cluster.isMaster) {
-  // Master opens and binds the socket and shares it with the worker.
+if (cluster.isPrimary) {
+  // Primary opens and binds the socket and shares it with the worker.
   cluster.schedulingPolicy = cluster.SCHED_NONE;
   cluster.fork().on('exit', common.mustCall(function(exitCode) {
     assert.strictEqual(exitCode, 0);

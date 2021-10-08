@@ -9,7 +9,7 @@ const node = process.execPath;
 // Test both sets of arguments that check syntax
 const syntaxArgs = [
   '-c',
-  '--check'
+  '--check',
 ];
 
 // Should not execute code piped from stdin with --check.
@@ -30,7 +30,7 @@ syntaxArgs.forEach(function(arg) {
   const stdin = 'export var p = 5; throw new Error("should not get run");';
   const c = spawnSync(
     node,
-    ['--experimental-modules', '--no-warnings', '--input-type=module', arg],
+    ['--no-warnings', '--input-type=module', arg],
     { encoding: 'utf8', input: stdin }
   );
 

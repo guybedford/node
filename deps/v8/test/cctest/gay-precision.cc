@@ -34,7 +34,7 @@
 #include "test/cctest/gay-precision.h"
 
 namespace v8 {
-namespace internal {
+namespace base {
 
 static const PrecomputedPrecision kPrecisionTestNumbers[] = {
   {2.3024669636324308799278094e-83, 2, "23", -82},
@@ -100039,7 +100039,6 @@ static const PrecomputedPrecision kPrecisionTestNumbers[] = {
   {5.9485998555293638609297584e+88, 2, "59", 89},
 };
 
-
 Vector<const PrecomputedPrecision> PrecomputedPrecisionRepresentations() {
   int number_elements =
       sizeof(kPrecisionTestNumbers) / sizeof(PrecomputedPrecision);
@@ -100047,5 +100046,5 @@ Vector<const PrecomputedPrecision> PrecomputedPrecisionRepresentations() {
                                             number_elements);
 }
 
-}  // namespace internal
+}  // namespace base
 }  // namespace v8

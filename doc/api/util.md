@@ -4,15 +4,17 @@
 
 > Stability: 2 - Stable
 
-The `util` module is primarily designed to support the needs of Node.js' own
-internal APIs. However, many of the utilities are useful for application and
-module developers as well. It can be accessed using:
+<!-- source_link=lib/util.js -->
+
+The `util` module supports the needs of Node.js internal APIs. Many of the
+utilities are useful for application and module developers as well. To access
+it:
 
 ```js
 const util = require('util');
 ```
 
-## util.callbackify(original)
+## `util.callbackify(original)`
 <!-- YAML
 added: v8.2.0
 -->
@@ -42,7 +44,7 @@ callbackFunction((err, ret) => {
 
 Will print:
 
-```txt
+```text
 hello world
 ```
 
@@ -68,13 +70,15 @@ callbackFunction((err, ret) => {
 });
 ```
 
-## util.debuglog(section)
+## `util.debuglog(section[, callback])`
 <!-- YAML
 added: v0.11.3
 -->
 
 * `section` {string} A string identifying the portion of the application for
   which the `debuglog` function is being created.
+* `callback` {Function} A callback invoked the first time the logging function
+  is called with a function argument that is a more optimized logging function.
 * Returns: {Function} The logging function
 
 The `util.debuglog()` method is used to create a function that conditionally
@@ -93,7 +97,7 @@ debuglog('hello from foo [%d]', 123);
 If this program is run with `NODE_DEBUG=foo` in the environment, then
 it will output something like:
 
-```txt
+```console
 FOO 3245: hello from foo [123]
 ```
 
@@ -112,14 +116,63 @@ debuglog('hi there, it\'s foo-bar [%d]', 2333);
 if it is run with `NODE_DEBUG=foo*` in the environment, then it will output
 something like:
 
-```txt
+```console
 FOO-BAR 3257: hi there, it's foo-bar [2333]
 ```
 
 Multiple comma-separated `section` names may be specified in the `NODE_DEBUG`
 environment variable: `NODE_DEBUG=fs,net,tls`.
 
-## util.deprecate(fn, msg\[, code\])
+The optional `callback` argument can be used to replace the logging function
+with a different function that doesn't have any initialization or
+unnecessary wrapping.
+
+```js
+const util = require('util');
+let debuglog = util.debuglog('internals', (debug) => {
+  // Replace with a logging function that optimizes out
+  // testing if the section is enabled
+  debuglog = debug;
+});
+```
+
+### `debuglog().enabled`
+<!-- YAML
+added: v14.9.0
+-->
+
+* {boolean}
+
+The `util.debuglog().enabled` getter is used to create a test that can be used
+in conditionals based on the existence of the `NODE_DEBUG` environment variable.
+If the `section` name appears within the value of that environment variable,
+then the returned value will be `true`. If not, then the returned value will be
+`false`.
+
+```js
+const util = require('util');
+const enabled = util.debuglog('foo').enabled;
+if (enabled) {
+  console.log('hello from foo [%d]', 123);
+}
+```
+
+If this program is run with `NODE_DEBUG=foo` in the environment, then it will
+output something like:
+
+```console
+hello from foo [123]
+```
+
+## `util.debug(section)`
+<!-- YAML
+added: v14.9.0
+-->
+
+Alias for `util.debuglog`. Usage allows for readability of that doesn't imply
+logging when only using `util.debuglog().enabled`.
+
+## `util.deprecate(fn, msg[, code])`
 <!-- YAML
 added: v0.8.0
 changes:
@@ -164,34 +217,30 @@ fn1(); // Emits a deprecation warning with code DEP0001
 fn2(); // Does not emit a deprecation warning because it has the same code
 ```
 
-If either the `--no-deprecation` or `--no-warnings` command line flags are
+If either the `--no-deprecation` or `--no-warnings` command-line flags are
 used, or if the `process.noDeprecation` property is set to `true` *prior* to
 the first deprecation warning, the `util.deprecate()` method does nothing.
 
-If the `--trace-deprecation` or `--trace-warnings` command line flags are set,
+If the `--trace-deprecation` or `--trace-warnings` command-line flags are set,
 or the `process.traceDeprecation` property is set to `true`, a warning and a
 stack trace are printed to `stderr` the first time the deprecated function is
 called.
 
-If the `--throw-deprecation` command line flag is set, or the
+If the `--throw-deprecation` command-line flag is set, or the
 `process.throwDeprecation` property is set to `true`, then an exception will be
 thrown when the deprecated function is called.
 
-The `--throw-deprecation` command line flag and `process.throwDeprecation`
+The `--throw-deprecation` command-line flag and `process.throwDeprecation`
 property take precedence over `--trace-deprecation` and
 `process.traceDeprecation`.
 
-## util.format(format\[, ...args\])
+## `util.format(format[, ...args])`
 <!-- YAML
 added: v0.5.3
 changes:
   - version: v12.11.0
     pr-url: https://github.com/nodejs/node/pull/29606
     description: The `%c` specifier is ignored now.
-  - version: v11.4.0
-    pr-url: https://github.com/nodejs/node/pull/23708
-    description: The `%d`, `%f` and `%i` specifiers now support Symbols
-                 properly.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/23162
     description: The `format` argument is now only taken as such if it actually
@@ -203,6 +252,10 @@ changes:
                  first argument. This change removes previously present quotes
                  from strings that were being output when the first argument
                  was not a string.
+  - version: v11.4.0
+    pr-url: https://github.com/nodejs/node/pull/23708
+    description: The `%d`, `%f` and `%i` specifiers now support Symbols
+                 properly.
   - version: v11.4.0
     pr-url: https://github.com/nodejs/node/pull/24806
     description: The `%o` specifier's `depth` has default depth of 4 again.
@@ -225,27 +278,26 @@ as a `printf`-like format string which can contain zero or more format
 specifiers. Each specifier is replaced with the converted value from the
 corresponding argument. Supported specifiers are:
 
-* `%s` - `String` will be used to convert all values except `BigInt`, `Object`
+* `%s`: `String` will be used to convert all values except `BigInt`, `Object`
   and `-0`. `BigInt` values will be represented with an `n` and Objects that
   have no user defined `toString` function are inspected using `util.inspect()`
   with options `{ depth: 0, colors: false, compact: 3 }`.
-* `%d` - `Number` will be used to convert all values except `BigInt` and
+* `%d`: `Number` will be used to convert all values except `BigInt` and
   `Symbol`.
-* `%i` - `parseInt(value, 10)` is used for all values except `BigInt` and
+* `%i`: `parseInt(value, 10)` is used for all values except `BigInt` and
   `Symbol`.
-* `%f` - `parseFloat(value)` is used for all values expect `Symbol`.
-* `%j` - JSON. Replaced with the string `'[Circular]'` if the argument contains
+* `%f`: `parseFloat(value)` is used for all values expect `Symbol`.
+* `%j`: JSON. Replaced with the string `'[Circular]'` if the argument contains
   circular references.
-* `%o` - `Object`. A string representation of an object with generic JavaScript
+* `%o`: `Object`. A string representation of an object with generic JavaScript
   object formatting. Similar to `util.inspect()` with options
   `{ showHidden: true, showProxy: true }`. This will show the full object
   including non-enumerable properties and proxies.
-* `%O` - `Object`. A string representation of an object with generic JavaScript
+* `%O`: `Object`. A string representation of an object with generic JavaScript
   object formatting. Similar to `util.inspect()` without options. This will show
   the full object not including non-enumerable properties and proxies.
-* `%c` - `CSS`. This specifier is currently ignored, and will skip any CSS
-  passed in.
-* `%%` - single percent sign (`'%'`). This does not consume an argument.
+* `%c`: `CSS`. This specifier is ignored and will skip any CSS passed in.
+* `%%`: single percent sign (`'%'`). This does not consume an argument.
 * Returns: {string} The formatted string
 
 If a specifier does not have a corresponding argument, it is not replaced:
@@ -287,7 +339,7 @@ util.format('%% %s');
 Some input values can have a significant performance overhead that can block the
 event loop. Use this function with care and never in a hot code path.
 
-## util.formatWithOptions(inspectOptions, format\[, ...args\])
+## `util.formatWithOptions(inspectOptions, format[, ...args])`
 <!-- YAML
 added: v10.0.0
 -->
@@ -305,7 +357,7 @@ util.formatWithOptions({ colors: true }, 'See object %O', { foo: 42 });
 // when printed to a terminal.
 ```
 
-## util.getSystemErrorName(err)
+## `util.getSystemErrorName(err)`
 <!-- YAML
 added: v9.7.0
 -->
@@ -324,7 +376,28 @@ fs.access('file/that/does/not/exist', (err) => {
 });
 ```
 
-## util.inherits(constructor, superConstructor)
+## `util.getSystemErrorMap()`
+<!-- YAML
+added:
+  - v16.0.0
+  - v14.17.0
+-->
+
+* Returns: {Map}
+
+Returns a Map of all system error codes available from the Node.js API.
+The mapping between error codes and error names is platform-dependent.
+See [Common System Errors][] for the names of common errors.
+
+```js
+fs.access('file/that/does/not/exist', (err) => {
+  const errorMap = util.getSystemErrorMap();
+  const name = errorMap.get(err.errno);
+  console.error(name);  // ENOENT
+});
+```
+
+## `util.inherits(constructor, superConstructor)`
 <!-- YAML
 added: v0.3.0
 changes:
@@ -332,6 +405,8 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/3455
     description: The `constructor` parameter can refer to an ES6 class now.
 -->
+
+> Stability: 3 - Legacy: Use ES2015 class syntax and `extends` keyword instead.
 
 * `constructor` {Function}
 * `superConstructor` {Function}
@@ -393,25 +468,43 @@ stream.on('data', (data) => {
 stream.write('With ES6');
 ```
 
-## util.inspect(object\[, options\])
-## util.inspect(object\[, showHidden\[, depth\[, colors\]\]\])
+## `util.inspect(object[, options])`
+## `util.inspect(object[, showHidden[, depth[, colors]]])`
 <!-- YAML
 added: v0.3.0
 changes:
-  - version: REPLACEME
+  - version:
+    - v14.6.0
+    - v12.19.0
+    pr-url: https://github.com/nodejs/node/pull/33690
+    description: If `object` is from a different `vm.Context` now, a custom
+                 inspection function on it will not receive context-specific
+                 arguments anymore.
+  - version:
+     - v13.13.0
+     - v12.17.0
+    pr-url: https://github.com/nodejs/node/pull/32392
+    description: The `maxStringLength` option is supported now.
+  - version:
+     - v13.5.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/30768
+    description: User defined prototype properties are inspected in case
+                 `showHidden` is `true`.
+  - version: v13.0.0
     pr-url: https://github.com/nodejs/node/pull/27685
     description: Circular references now include a marker to the reference.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/27109
     description: The `compact` options default is changed to `3` and the
                  `breakLength` options default is changed to `80`.
-  - version: v11.11.0
-    pr-url: https://github.com/nodejs/node/pull/26269
-    description: The `compact` option accepts numbers for a new output mode.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/24971
     description: Internal properties no longer appear in the context argument
                  of a custom inspection function.
+  - version: v11.11.0
+    pr-url: https://github.com/nodejs/node/pull/26269
+    description: The `compact` option accepts numbers for a new output mode.
   - version: v11.7.0
     pr-url: https://github.com/nodejs/node/pull/25006
     description: ArrayBuffers now also show their binary contents.
@@ -424,13 +517,13 @@ changes:
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22846
     description: The `depth` default changed to `20`.
-  - version: v10.12.0
-    pr-url: https://github.com/nodejs/node/pull/22788
-    description: The `sorted` option is supported now.
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22756
     description: The inspection output is now limited to about 128 MB. Data
                  above that size will not be fully inspected.
+  - version: v10.12.0
+    pr-url: https://github.com/nodejs/node/pull/22788
+    description: The `sorted` option is supported now.
   - version: v10.6.0
     pr-url: https://github.com/nodejs/node/pull/20725
     description: Inspecting linked lists and similar objects is now possible
@@ -461,7 +554,8 @@ changes:
 * `options` {Object}
   * `showHidden` {boolean} If `true`, `object`'s non-enumerable symbols and
     properties are included in the formatted result. [`WeakMap`][] and
-    [`WeakSet`][] entries are also included. **Default:** `false`.
+    [`WeakSet`][] entries are also included as well as user defined prototype
+    properties (excluding method properties). **Default:** `false`.
   * `depth` {number} Specifies the number of times to recurse while formatting
     `object`. This is useful for inspecting large objects. To recurse up to
     the maximum call stack size pass `Infinity` or `null`.
@@ -478,17 +572,19 @@ changes:
     [`TypedArray`][], [`WeakMap`][] and [`WeakSet`][] elements to include when
     formatting. Set to `null` or `Infinity` to show all elements. Set to `0` or
     negative to show no elements. **Default:** `100`.
+  * `maxStringLength` {integer} Specifies the maximum number of characters to
+    include when formatting. Set to `null` or `Infinity` to show all elements.
+    Set to `0` or negative to show no characters. **Default:** `10000`.
   * `breakLength` {integer} The length at which input values are split across
     multiple lines. Set to `Infinity` to format the input as a single line
     (in combination with `compact` set to `true` or any number >= `1`).
     **Default:** `80`.
   * `compact` {boolean|integer} Setting this to `false` causes each object key
-    to be displayed on a new line. It will also add new lines to text that is
+    to be displayed on a new line. It will break on new lines in text that is
     longer than `breakLength`. If set to a number, the most `n` inner elements
     are united on a single line as long as all properties fit into
-    `breakLength`. Short array elements are also grouped together. No
-    text will be reduced below 16 characters, no matter the `breakLength` size.
-    For more information, see the example below. **Default:** `3`.
+    `breakLength`. Short array elements are also grouped together. For more
+    information, see the example below. **Default:** `3`.
   * `sorted` {boolean|Function} If set to `true` or a function, all properties
     of an object, and `Set` and `Map` entries are sorted in the resulting
     string. If set to `true` the [default sort][] is used. If set to a function,
@@ -556,8 +652,8 @@ const util = require('util');
 
 const o = {
   a: [1, 2, [[
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ' +
-      'eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    'Lorem ipsum dolor sit amet,\nconsectetur adipiscing elit, sed do ' +
+      'eiusmod \ntempor incididunt ut labore et dolore magna aliqua.',
     'test',
     'foo']], 4],
   b: new Map([['za', 1], ['zb', 'test']])
@@ -567,13 +663,13 @@ console.log(util.inspect(o, { compact: true, depth: 5, breakLength: 80 }));
 // { a:
 //   [ 1,
 //     2,
-//     [ [ 'Lorem ipsum dolor sit amet, consectetur [...]', // A long line
+//     [ [ 'Lorem ipsum dolor sit amet,\nconsectetur [...]', // A long line
 //           'test',
 //           'foo' ] ],
 //     4 ],
-//   b: Map { 'za' => 1, 'zb' => 'test' } }
+//   b: Map(2) { 'za' => 1, 'zb' => 'test' } }
 
-// Setting `compact` to false changes the output to be more reader friendly.
+// Setting `compact` to false or an integer creates more reader friendly output.
 console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 
 // {
@@ -582,17 +678,16 @@ console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 //     2,
 //     [
 //       [
-//         'Lorem ipsum dolor sit amet, consectetur ' +
-//           'adipiscing elit, sed do eiusmod tempor ' +
-//           'incididunt ut labore et dolore magna ' +
-//           'aliqua.,
+//         'Lorem ipsum dolor sit amet,\n' +
+//           'consectetur adipiscing elit, sed do eiusmod \n' +
+//           'tempor incididunt ut labore et dolore magna aliqua.',
 //         'test',
 //         'foo'
 //       ]
 //     ],
 //     4
 //   ],
-//   b: Map {
+//   b: Map(2) {
 //     'za' => 1,
 //     'zb' => 'test'
 //   }
@@ -600,8 +695,6 @@ console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 
 // Setting `breakLength` to e.g. 150 will print the "Lorem ipsum" text in a
 // single line.
-// Reducing the `breakLength` will split the "Lorem ipsum" text in smaller
-// chunks.
 ```
 
 The `showHidden` option allows [`WeakMap`][] and [`WeakSet`][] entries to be
@@ -634,9 +727,9 @@ const o1 = {
   c: new Set([2, 3, 1])
 };
 console.log(inspect(o1, { sorted: true }));
-// { a: '`a` comes before `b`', b: [ 2, 3, 1 ], c: Set { 1, 2, 3 } }
+// { a: '`a` comes before `b`', b: [ 2, 3, 1 ], c: Set(3) { 1, 2, 3 } }
 console.log(inspect(o1, { sorted: (a, b) => b.localeCompare(a) }));
-// { c: Set { 3, 2, 1 }, b: [ 2, 3, 1 ], a: '`a` comes before `b`' }
+// { c: Set(3) { 3, 2, 1 }, b: [ 2, 3, 1 ], a: '`a` comes before `b`' }
 
 const o2 = {
   c: new Set([2, 1, 3]),
@@ -665,27 +758,86 @@ via the `util.inspect.styles` and `util.inspect.colors` properties.
 
 The default styles and associated colors are:
 
-* `bigint` - `yellow`
-* `boolean` - `yellow`
-* `date` - `magenta`
-* `module` - `underline`
-* `name` - (no styling)
-* `null` - `bold`
-* `number` - `yellow`
-* `regexp` - `red`
-* `special` - `cyan` (e.g., `Proxies`)
-* `string` - `green`
-* `symbol` - `green`
-* `undefined` - `grey`
-
-The predefined color codes are: `white`, `grey`, `black`, `blue`, `cyan`,
-`green`, `magenta`, `red` and `yellow`. There are also `bold`, `italic`,
-`underline` and `inverse` codes.
+* `bigint`: `yellow`
+* `boolean`: `yellow`
+* `date`: `magenta`
+* `module`: `underline`
+* `name`: (no styling)
+* `null`: `bold`
+* `number`: `yellow`
+* `regexp`: `red`
+* `special`: `cyan` (e.g., `Proxies`)
+* `string`: `green`
+* `symbol`: `green`
+* `undefined`: `grey`
 
 Color styling uses ANSI control codes that may not be supported on all
 terminals. To verify color support use [`tty.hasColors()`][].
 
-### Custom inspection functions on Objects
+Predefined control codes are listed below (grouped as "Modifiers", "Foreground
+colors", and "Background colors").
+
+#### Modifiers
+
+Modifier support varies throughout different terminals. They will mostly be
+ignored, if not supported.
+
+* `reset` - Resets all (color) modifiers to their defaults
+* **bold** - Make text bold
+* _italic_ - Make text italic
+* <span style="border-bottom: 1px;">underline</span> - Make text underlined
+* ~~strikethrough~~ - Puts a horizontal line through the center of the text
+  (Alias: `strikeThrough`, `crossedout`, `crossedOut`)
+* `hidden` - Prints the text, but makes it invisible (Alias: conceal)
+* <span style="opacity: 0.5;">dim</span> - Decreased color intensity (Alias:
+  `faint`)
+* <span style="border-top: 1px">overlined</span> - Make text overlined
+* blink - Hides and shows the text in an interval
+* <span style="filter: invert(100%)">inverse</span> - Swap foreground and
+  background colors (Alias: `swapcolors`, `swapColors`)
+* <span style="border-bottom: 1px double;">doubleunderline</span> - Make text
+  double underlined (Alias: `doubleUnderline`)
+* <span style="border: 1px">framed</span> - Draw a frame around the text
+
+#### Foreground colors
+
+* `black`
+* `red`
+* `green`
+* `yellow`
+* `blue`
+* `magenta`
+* `cyan`
+* `white`
+* `gray` (alias: `grey`, `blackBright`)
+* `redBright`
+* `greenBright`
+* `yellowBright`
+* `blueBright`
+* `magentaBright`
+* `cyanBright`
+* `whiteBright`
+
+#### Background colors
+
+* `bgBlack`
+* `bgRed`
+* `bgGreen`
+* `bgYellow`
+* `bgBlue`
+* `bgMagenta`
+* `bgCyan`
+* `bgWhite`
+* `bgGray` (alias: `bgGrey`, `bgBlackBright`)
+* `bgRedBright`
+* `bgGreenBright`
+* `bgYellowBright`
+* `bgBlueBright`
+* `bgMagentaBright`
+* `bgCyanBright`
+* `bgWhiteBright`
+
+### Custom inspection functions on objects
 
 <!-- type=misc -->
 
@@ -741,7 +893,7 @@ util.inspect(obj);
 // Returns: "{ bar: 'baz' }"
 ```
 
-### util.inspect.custom
+### `util.inspect.custom`
 <!-- YAML
 added: v6.6.0
 changes:
@@ -780,7 +932,7 @@ console.log(password);
 
 See [Custom inspection functions on Objects][] for more details.
 
-### util.inspect.defaultOptions
+### `util.inspect.defaultOptions`
 <!-- YAML
 added: v6.4.0
 -->
@@ -800,7 +952,7 @@ util.inspect.defaultOptions.maxArrayLength = null;
 console.log(arr); // logs the full array
 ```
 
-## util.isDeepStrictEqual(val1, val2)
+## `util.isDeepStrictEqual(val1, val2)`
 <!-- YAML
 added: v9.0.0
 -->
@@ -815,7 +967,7 @@ Otherwise, returns `false`.
 See [`assert.deepStrictEqual()`][] for more information about deep strict
 equality.
 
-## util.promisify(original)
+## `util.promisify(original)`
 <!-- YAML
 added: v8.0.0
 -->
@@ -862,6 +1014,34 @@ will throw an error. If `original` is a function but its last argument is not
 an error-first callback, it will still be passed an error-first
 callback as its last argument.
 
+Using `promisify()` on class methods or other methods that use `this` may not
+work as expected unless handled specially:
+
+```js
+const util = require('util');
+
+class Foo {
+  constructor() {
+    this.a = 42;
+  }
+
+  bar(callback) {
+    callback(null, this.a);
+  }
+}
+
+const foo = new Foo();
+
+const naiveBar = util.promisify(foo.bar);
+// TypeError: Cannot read property 'a' of undefined
+// naiveBar().then(a => console.log(a));
+
+naiveBar.call(foo).then((a) => console.log(a)); // '42'
+
+const bindBar = naiveBar.bind(foo);
+bindBar().then((a) => console.log(a)); // '42'
+```
+
 ### Custom promisified functions
 
 Using the `util.promisify.custom` symbol one can override the return value of
@@ -900,15 +1080,53 @@ doSomething[util.promisify.custom] = (foo) => {
 If `promisify.custom` is defined but is not a function, `promisify()` will
 throw an error.
 
-### util.promisify.custom
+### `util.promisify.custom`
 <!-- YAML
 added: v8.0.0
+changes:
+  - version:
+      - v13.12.0
+      - v12.16.2
+    pr-url: https://github.com/nodejs/node/pull/31672
+    description: This is now defined as a shared symbol.
 -->
 
 * {symbol} that can be used to declare custom promisified variants of functions,
-see [Custom promisified functions][].
+  see [Custom promisified functions][].
 
-## Class: util.TextDecoder
+In addition to being accessible through `util.promisify.custom`, this
+symbol is [registered globally][global symbol registry] and can be
+accessed in any environment as `Symbol.for('nodejs.util.promisify.custom')`.
+
+For example, with a function that takes in
+`(foo, onSuccessCallback, onErrorCallback)`:
+
+```js
+const kCustomPromisifiedSymbol = Symbol.for('nodejs.util.promisify.custom');
+
+doSomething[kCustomPromisifiedSymbol] = (foo) => {
+  return new Promise((resolve, reject) => {
+    doSomething(foo, resolve, reject);
+  });
+};
+```
+
+## `util.stripVTControlCharacters(str)`
+<!-- YAML
+added: REPLACEME
+-->
+
+* `str` {string}
+* Returns: {string}
+
+Returns `str` with any ANSI escape codes removed.
+
+```js
+console.log(util.stripVTControlCharacters('\u001B[4mvalue\u001B[0m'));
+// Prints "value"
+```
+
+## Class: `util.TextDecoder`
 <!-- YAML
 added: v8.3.0
 -->
@@ -925,7 +1143,7 @@ while (buffer = getNextChunkSomehow()) {
 string += decoder.decode(); // end-of-stream
 ```
 
-### WHATWG Supported Encodings
+### WHATWG supported encodings
 
 Per the [WHATWG Encoding Standard][], the encodings supported by the
 `TextDecoder` API are outlined in the tables below. For each encoding,
@@ -934,7 +1152,7 @@ one or more aliases may be used.
 Different Node.js build configurations support different sets of encodings.
 (see [Internationalization][])
 
-#### Encodings Supported by Default (With Full ICU Data)
+#### Encodings supported by default (with full ICU data)
 
 | Encoding           | Aliases                          |
 | -----------------  | -------------------------------- |
@@ -973,30 +1191,30 @@ Different Node.js build configurations support different sets of encodings.
 | `'shift_jis'`      | `'csshiftjis'`, `'ms932'`, `'ms_kanji'`, `'shift-jis'`, `'sjis'`, `'windows-31j'`, `'x-sjis'` |
 | `'euc-kr'`         | `'cseuckr'`, `'csksc56011987'`, `'iso-ir-149'`, `'korean'`, `'ks_c_5601-1987'`, `'ks_c_5601-1989'`, `'ksc5601'`, `'ksc_5601'`, `'windows-949'` |
 
-#### Encodings Supported when Node.js is built with the `small-icu` option
+#### Encodings supported when Node.js is built with the `small-icu` option
 
-| Encoding     | Aliases                           |
-| -----------  | --------------------------------- |
-| `'utf-8'`    | `'unicode-1-1-utf-8'`, `'utf8'`   |
-| `'utf-16le'` | `'utf-16'`                        |
-| `'utf-16be'` |                                   |
+| Encoding     | Aliases                         |
+| -----------  | ------------------------------- |
+| `'utf-8'`    | `'unicode-1-1-utf-8'`, `'utf8'` |
+| `'utf-16le'` | `'utf-16'`                      |
+| `'utf-16be'` |                                 |
 
-#### Encodings Supported when ICU is disabled
+#### Encodings supported when ICU is disabled
 
-| Encoding     | Aliases                           |
-| -----------  | --------------------------------- |
-| `'utf-8'`    | `'unicode-1-1-utf-8'`, `'utf8'`   |
-| `'utf-16le'` | `'utf-16'`                        |
+| Encoding     | Aliases                         |
+| -----------  | ------------------------------- |
+| `'utf-8'`    | `'unicode-1-1-utf-8'`, `'utf8'` |
+| `'utf-16le'` | `'utf-16'`                      |
 
 The `'iso-8859-16'` encoding listed in the [WHATWG Encoding Standard][]
 is not supported.
 
-### new TextDecoder(\[encoding\[, options\]\])
+### `new TextDecoder([encoding[, options]])`
 <!-- YAML
 added: v8.3.0
 changes:
   - version: v11.0.0
-    pr-url: v11.0.0
+    pr-url: https://github.com/nodejs/node/pull/22281
     description: The class is now available on the global object.
 -->
 
@@ -1016,7 +1234,7 @@ supported encodings or an alias.
 
 The `TextDecoder` class is also available on the global object.
 
-### textDecoder.decode(\[input\[, options\]\])
+### `textDecoder.decode([input[, options]])`
 
 * `input` {ArrayBuffer|DataView|TypedArray} An `ArrayBuffer`, `DataView` or
   `TypedArray` instance containing the encoded data.
@@ -1032,32 +1250,32 @@ internally and emitted after the next call to `textDecoder.decode()`.
 If `textDecoder.fatal` is `true`, decoding errors that occur will result in a
 `TypeError` being thrown.
 
-### textDecoder.encoding
+### `textDecoder.encoding`
 
 * {string}
 
 The encoding supported by the `TextDecoder` instance.
 
-### textDecoder.fatal
+### `textDecoder.fatal`
 
 * {boolean}
 
 The value will be `true` if decoding errors result in a `TypeError` being
 thrown.
 
-### textDecoder.ignoreBOM
+### `textDecoder.ignoreBOM`
 
 * {boolean}
 
 The value will be `true` if the decoding result will include the byte order
 mark.
 
-## Class: util.TextEncoder
+## Class: `util.TextEncoder`
 <!-- YAML
 added: v8.3.0
 changes:
   - version: v11.0.0
-    pr-url: v11.0.0
+    pr-url: https://github.com/nodejs/node/pull/22281
     description: The class is now available on the global object.
 -->
 
@@ -1071,7 +1289,7 @@ const uint8array = encoder.encode('this is some data');
 
 The `TextEncoder` class is also available on the global object.
 
-### textEncoder.encode(\[input\])
+### `textEncoder.encode([input])`
 
 * `input` {string} The text to encode. **Default:** an empty string.
 * Returns: {Uint8Array}
@@ -1079,7 +1297,7 @@ The `TextEncoder` class is also available on the global object.
 UTF-8 encodes the `input` string and returns a `Uint8Array` containing the
 encoded bytes.
 
-### textEncoder.encodeInto(src, dest)
+### `textEncoder.encodeInto(src, dest)`
 
 * `src` {string} The text to encode.
 * `dest` {Uint8Array} The array to hold the encode result.
@@ -1097,28 +1315,46 @@ const dest = new Uint8Array(10);
 const { read, written } = encoder.encodeInto(src, dest);
 ```
 
-### textEncoder.encoding
+### `textEncoder.encoding`
 
 * {string}
 
 The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 
-## util.types
+## `util.toUSVString(string)`
 <!-- YAML
-added: v10.0.0
+added:
+  - v16.8.0
+  - v14.18.0
 -->
 
-`util.types` provides a number of type checks for different kinds of built-in
-objects. Unlike `instanceof` or `Object.prototype.toString.call(value)`,
-these checks do not inspect properties of the object that are accessible from
-JavaScript (like their prototype), and usually have the overhead of
-calling into C++.
+* `string` {string}
+
+Returns the `string` after replacing any surrogate code points
+(or equivalently, any unpaired surrogate code units) with the
+Unicode "replacement character" U+FFFD.
+
+## `util.types`
+<!-- YAML
+added: v10.0.0
+changes:
+  - version: v15.3.0
+    pr-url: https://github.com/nodejs/node/pull/34055
+    description: Exposed as `require('util/types')`.
+-->
+
+`util.types` provides type checks for different kinds of built-in objects.
+Unlike `instanceof` or `Object.prototype.toString.call(value)`, these checks do
+not inspect properties of the object that are accessible from JavaScript (like
+their prototype), and usually have the overhead of calling into C++.
 
 The result generally does not make any guarantees about what kinds of
 properties or behavior a value exposes in JavaScript. They are primarily
 useful for addon developers who prefer to do type checking in JavaScript.
 
-### util.types.isAnyArrayBuffer(value)
+The API is accessible via `require('util').types` or `require('util/types')`.
+
+### `util.types.isAnyArrayBuffer(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1137,7 +1373,26 @@ util.types.isAnyArrayBuffer(new ArrayBuffer());  // Returns true
 util.types.isAnyArrayBuffer(new SharedArrayBuffer());  // Returns true
 ```
 
-### util.types.isArgumentsObject(value)
+### `util.types.isArrayBufferView(value)`
+<!-- YAML
+added: v10.0.0
+-->
+
+* `value` {any}
+* Returns: {boolean}
+
+Returns `true` if the value is an instance of one of the [`ArrayBuffer`][]
+views, such as typed array objects or [`DataView`][]. Equivalent to
+[`ArrayBuffer.isView()`][].
+
+```js
+util.types.isArrayBufferView(new Int8Array());  // true
+util.types.isArrayBufferView(Buffer.from('hello world')); // true
+util.types.isArrayBufferView(new DataView(new ArrayBuffer(16)));  // true
+util.types.isArrayBufferView(new ArrayBuffer());  // false
+```
+
+### `util.types.isArgumentsObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1154,7 +1409,7 @@ function foo() {
 }
 ```
 
-### util.types.isArrayBuffer(value)
+### `util.types.isArrayBuffer(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1171,7 +1426,7 @@ util.types.isArrayBuffer(new ArrayBuffer());  // Returns true
 util.types.isArrayBuffer(new SharedArrayBuffer());  // Returns false
 ```
 
-### util.types.isAsyncFunction(value)
+### `util.types.isAsyncFunction(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1189,7 +1444,7 @@ util.types.isAsyncFunction(function foo() {});  // Returns false
 util.types.isAsyncFunction(async function foo() {});  // Returns true
 ```
 
-### util.types.isBigInt64Array(value)
+### `util.types.isBigInt64Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1204,7 +1459,7 @@ util.types.isBigInt64Array(new BigInt64Array());   // Returns true
 util.types.isBigInt64Array(new BigUint64Array());  // Returns false
 ```
 
-### util.types.isBigUint64Array(value)
+### `util.types.isBigUint64Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1219,7 +1474,7 @@ util.types.isBigUint64Array(new BigInt64Array());   // Returns false
 util.types.isBigUint64Array(new BigUint64Array());  // Returns true
 ```
 
-### util.types.isBooleanObject(value)
+### `util.types.isBooleanObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1239,7 +1494,7 @@ util.types.isBooleanObject(Boolean(false)); // Returns false
 util.types.isBooleanObject(Boolean(true));  // Returns false
 ```
 
-### util.types.isBoxedPrimitive(value)
+### `util.types.isBoxedPrimitive(value)`
 <!-- YAML
 added: v10.11.0
 -->
@@ -1260,7 +1515,17 @@ util.types.isBoxedPrimitive(Object(Symbol('foo'))); // Returns true
 util.types.isBoxedPrimitive(Object(BigInt(5))); // Returns true
 ```
 
-### util.types.isDataView(value)
+### `util.types.isCryptoKey(value)`
+<!-- YAML
+added: v16.2.0
+-->
+
+* `value` {Object}
+* Returns: {boolean}
+
+Returns `true` if `value` is a {CryptoKey}, `false` otherwise.
+
+### `util.types.isDataView(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1278,7 +1543,7 @@ util.types.isDataView(new Float64Array());  // Returns false
 
 See also [`ArrayBuffer.isView()`][].
 
-### util.types.isDate(value)
+### `util.types.isDate(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1292,7 +1557,7 @@ Returns `true` if the value is a built-in [`Date`][] instance.
 util.types.isDate(new Date());  // Returns true
 ```
 
-### util.types.isExternal(value)
+### `util.types.isExternal(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1302,7 +1567,42 @@ added: v10.0.0
 
 Returns `true` if the value is a native `External` value.
 
-### util.types.isFloat32Array(value)
+A native `External` value is a special type of object that contains a
+raw C++ pointer (`void*`) for access from native code, and has no other
+properties. Such objects are created either by Node.js internals or native
+addons. In JavaScript, they are [frozen][`Object.freeze()`] objects with a
+`null` prototype.
+
+```c
+#include <js_native_api.h>
+#include <stdlib.h>
+napi_value result;
+static napi_value MyNapi(napi_env env, napi_callback_info info) {
+  int* raw = (int*) malloc(1024);
+  napi_status status = napi_create_external(env, (void*) raw, NULL, NULL, &result);
+  if (status != napi_ok) {
+    napi_throw_error(env, NULL, "napi_create_external failed");
+    return NULL;
+  }
+  return result;
+}
+...
+DECLARE_NAPI_PROPERTY("myNapi", MyNapi)
+...
+```
+
+```js
+const native = require('napi_addon.node');
+const data = native.myNapi();
+util.types.isExternal(data); // returns true
+util.types.isExternal(0); // returns false
+util.types.isExternal(new String('foo')); // returns false
+```
+
+For further information on `napi_create_external`, refer to
+[`napi_create_external()`][].
+
+### `util.types.isFloat32Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1318,7 +1618,7 @@ util.types.isFloat32Array(new Float32Array());  // Returns true
 util.types.isFloat32Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isFloat64Array(value)
+### `util.types.isFloat64Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1334,7 +1634,7 @@ util.types.isFloat64Array(new Uint8Array());  // Returns false
 util.types.isFloat64Array(new Float64Array());  // Returns true
 ```
 
-### util.types.isGeneratorFunction(value)
+### `util.types.isGeneratorFunction(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1352,7 +1652,7 @@ util.types.isGeneratorFunction(function foo() {});  // Returns false
 util.types.isGeneratorFunction(function* foo() {});  // Returns true
 ```
 
-### util.types.isGeneratorObject(value)
+### `util.types.isGeneratorObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1372,7 +1672,7 @@ const generator = foo();
 util.types.isGeneratorObject(generator);  // Returns true
 ```
 
-### util.types.isInt8Array(value)
+### `util.types.isInt8Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1388,7 +1688,7 @@ util.types.isInt8Array(new Int8Array());  // Returns true
 util.types.isInt8Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isInt16Array(value)
+### `util.types.isInt16Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1404,7 +1704,7 @@ util.types.isInt16Array(new Int16Array());  // Returns true
 util.types.isInt16Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isInt32Array(value)
+### `util.types.isInt32Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1420,7 +1720,17 @@ util.types.isInt32Array(new Int32Array());  // Returns true
 util.types.isInt32Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isMap(value)
+### `util.types.isKeyObject(value)`
+<!-- YAML
+added: v16.2.0
+-->
+
+* `value` {Object}
+* Returns: {boolean}
+
+Returns `true` if `value` is a {KeyObject}, `false` otherwise.
+
+### `util.types.isMap(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1434,7 +1744,7 @@ Returns `true` if the value is a built-in [`Map`][] instance.
 util.types.isMap(new Map());  // Returns true
 ```
 
-### util.types.isMapIterator(value)
+### `util.types.isMapIterator(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1453,7 +1763,7 @@ util.types.isMapIterator(map.entries());  // Returns true
 util.types.isMapIterator(map[Symbol.iterator]());  // Returns true
 ```
 
-### util.types.isModuleNamespaceObject(value)
+### `util.types.isModuleNamespaceObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1470,7 +1780,7 @@ import * as ns from './a.js';
 util.types.isModuleNamespaceObject(ns);  // Returns true
 ```
 
-### util.types.isNativeError(value)
+### `util.types.isNativeError(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1486,7 +1796,7 @@ util.types.isNativeError(new TypeError());  // Returns true
 util.types.isNativeError(new RangeError());  // Returns true
 ```
 
-### util.types.isNumberObject(value)
+### `util.types.isNumberObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1502,7 +1812,7 @@ util.types.isNumberObject(0);  // Returns false
 util.types.isNumberObject(new Number(0));   // Returns true
 ```
 
-### util.types.isPromise(value)
+### `util.types.isPromise(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1516,7 +1826,7 @@ Returns `true` if the value is a built-in [`Promise`][].
 util.types.isPromise(Promise.resolve(42));  // Returns true
 ```
 
-### util.types.isProxy(value)
+### `util.types.isProxy(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1533,7 +1843,7 @@ util.types.isProxy(target);  // Returns false
 util.types.isProxy(proxy);  // Returns true
 ```
 
-### util.types.isRegExp(value)
+### `util.types.isRegExp(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1548,7 +1858,7 @@ util.types.isRegExp(/abc/);  // Returns true
 util.types.isRegExp(new RegExp('abc'));  // Returns true
 ```
 
-### util.types.isSet(value)
+### `util.types.isSet(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1562,7 +1872,7 @@ Returns `true` if the value is a built-in [`Set`][] instance.
 util.types.isSet(new Set());  // Returns true
 ```
 
-### util.types.isSetIterator(value)
+### `util.types.isSetIterator(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1581,7 +1891,7 @@ util.types.isSetIterator(set.entries());  // Returns true
 util.types.isSetIterator(set[Symbol.iterator]());  // Returns true
 ```
 
-### util.types.isSharedArrayBuffer(value)
+### `util.types.isSharedArrayBuffer(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1598,7 +1908,7 @@ util.types.isSharedArrayBuffer(new ArrayBuffer());  // Returns false
 util.types.isSharedArrayBuffer(new SharedArrayBuffer());  // Returns true
 ```
 
-### util.types.isStringObject(value)
+### `util.types.isStringObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1614,7 +1924,7 @@ util.types.isStringObject('foo');  // Returns false
 util.types.isStringObject(new String('foo'));   // Returns true
 ```
 
-### util.types.isSymbolObject(value)
+### `util.types.isSymbolObject(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1631,7 +1941,7 @@ util.types.isSymbolObject(symbol);  // Returns false
 util.types.isSymbolObject(Object(symbol));   // Returns true
 ```
 
-### util.types.isTypedArray(value)
+### `util.types.isTypedArray(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1649,7 +1959,7 @@ util.types.isTypedArray(new Float64Array());  // Returns true
 
 See also [`ArrayBuffer.isView()`][].
 
-### util.types.isUint8Array(value)
+### `util.types.isUint8Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1665,7 +1975,7 @@ util.types.isUint8Array(new Uint8Array());  // Returns true
 util.types.isUint8Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isUint8ClampedArray(value)
+### `util.types.isUint8ClampedArray(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1681,7 +1991,7 @@ util.types.isUint8ClampedArray(new Uint8ClampedArray());  // Returns true
 util.types.isUint8ClampedArray(new Float64Array());  // Returns false
 ```
 
-### util.types.isUint16Array(value)
+### `util.types.isUint16Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1697,7 +2007,7 @@ util.types.isUint16Array(new Uint16Array());  // Returns true
 util.types.isUint16Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isUint32Array(value)
+### `util.types.isUint32Array(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1713,7 +2023,7 @@ util.types.isUint32Array(new Uint32Array());  // Returns true
 util.types.isUint32Array(new Float64Array());  // Returns false
 ```
 
-### util.types.isWeakMap(value)
+### `util.types.isWeakMap(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1727,7 +2037,7 @@ Returns `true` if the value is a built-in [`WeakMap`][] instance.
 util.types.isWeakMap(new WeakMap());  // Returns true
 ```
 
-### util.types.isWeakSet(value)
+### `util.types.isWeakSet(value)`
 <!-- YAML
 added: v10.0.0
 -->
@@ -1741,10 +2051,13 @@ Returns `true` if the value is a built-in [`WeakSet`][] instance.
 util.types.isWeakSet(new WeakSet());  // Returns true
 ```
 
-### util.types.isWebAssemblyCompiledModule(value)
+### `util.types.isWebAssemblyCompiledModule(value)`
 <!-- YAML
 added: v10.0.0
+deprecated: v14.0.0
 -->
+
+> Stability: 0 - Deprecated: Use `value instanceof WebAssembly.Module` instead.
 
 * `value` {any}
 * Returns: {boolean}
@@ -1761,7 +2074,7 @@ util.types.isWebAssemblyCompiledModule(module);  // Returns true
 The following APIs are deprecated and should no longer be used. Existing
 applications and modules should be updated to find alternative approaches.
 
-### util.\_extend(target, source)
+### `util._extend(target, source)`
 <!-- YAML
 added: v0.7.5
 deprecated: v6.0.0
@@ -1778,7 +2091,7 @@ Node.js modules. The community found and used it anyway.
 It is deprecated and should not be used in new code. JavaScript comes with very
 similar built-in functionality through [`Object.assign()`][].
 
-### util.isArray(object)
+### `util.isArray(object)`
 <!-- YAML
 added: v0.6.0
 deprecated: v4.0.0
@@ -1804,7 +2117,7 @@ util.isArray({});
 // Returns: false
 ```
 
-### util.isBoolean(object)
+### `util.isBoolean(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -1828,7 +2141,7 @@ util.isBoolean(false);
 // Returns: true
 ```
 
-### util.isBuffer(object)
+### `util.isBuffer(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -1852,7 +2165,7 @@ util.isBuffer(Buffer.from('hello world'));
 // Returns: true
 ```
 
-### util.isDate(object)
+### `util.isDate(object)`
 <!-- YAML
 added: v0.6.0
 deprecated: v4.0.0
@@ -1876,7 +2189,7 @@ util.isDate({});
 // Returns: false
 ```
 
-### util.isError(object)
+### `util.isError(object)`
 <!-- YAML
 added: v0.6.0
 deprecated: v4.0.0
@@ -1916,7 +2229,7 @@ util.isError(obj);
 // Returns: true
 ```
 
-### util.isFunction(object)
+### `util.isFunction(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -1944,7 +2257,7 @@ util.isFunction(Bar);
 // Returns: true
 ```
 
-### util.isNull(object)
+### `util.isNull(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -1969,7 +2282,7 @@ util.isNull(null);
 // Returns: true
 ```
 
-### util.isNullOrUndefined(object)
+### `util.isNullOrUndefined(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -1995,7 +2308,7 @@ util.isNullOrUndefined(null);
 // Returns: true
 ```
 
-### util.isNumber(object)
+### `util.isNumber(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2021,7 +2334,7 @@ util.isNumber(NaN);
 // Returns: true
 ```
 
-### util.isObject(object)
+### `util.isObject(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2050,7 +2363,7 @@ util.isObject(() => {});
 // Returns: false
 ```
 
-### util.isPrimitive(object)
+### `util.isPrimitive(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2089,7 +2402,7 @@ util.isPrimitive(new Date());
 // Returns: false
 ```
 
-### util.isRegExp(object)
+### `util.isRegExp(object)`
 <!-- YAML
 added: v0.6.0
 deprecated: v4.0.0
@@ -2113,7 +2426,7 @@ util.isRegExp({});
 // Returns: false
 ```
 
-### util.isString(object)
+### `util.isString(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2139,7 +2452,7 @@ util.isString(5);
 // Returns: false
 ```
 
-### util.isSymbol(object)
+### `util.isSymbol(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2163,7 +2476,7 @@ util.isSymbol(Symbol('foo'));
 // Returns: true
 ```
 
-### util.isUndefined(object)
+### `util.isUndefined(object)`
 <!-- YAML
 added: v0.11.5
 deprecated: v4.0.0
@@ -2188,7 +2501,7 @@ util.isUndefined(null);
 // Returns: false
 ```
 
-### util.log(string)
+### `util.log(string)`
 <!-- YAML
 added: v0.3.0
 deprecated: v6.0.0
@@ -2207,15 +2520,22 @@ const util = require('util');
 util.log('Timestamped message.');
 ```
 
-[`'uncaughtException'`]: process.html#process_event_uncaughtexception
-[`'warning'`]: process.html#process_event_warning
+[Common System Errors]: errors.md#common-system-errors
+[Custom inspection functions on objects]: #custom-inspection-functions-on-objects
+[Custom promisified functions]: #custom-promisified-functions
+[Customizing `util.inspect` colors]: #customizing-utilinspect-colors
+[Internationalization]: intl.md
+[Module Namespace Object]: https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects
+[WHATWG Encoding Standard]: https://encoding.spec.whatwg.org/
+[`'uncaughtException'`]: process.md#event-uncaughtexception
+[`'warning'`]: process.md#event-warning
 [`Array.isArray()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
 [`ArrayBuffer.isView()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView
 [`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-[`Buffer.isBuffer()`]: buffer.html#buffer_class_method_buffer_isbuffer_obj
+[`Buffer.isBuffer()`]: buffer.md#static-method-bufferisbufferobj
 [`DataView`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 [`Date`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
-[`Error`]: errors.html#errors_class_error
+[`Error`]: errors.md#class-error
 [`Float32Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array
 [`Float64Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array
 [`Int16Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array
@@ -2223,6 +2543,7 @@ util.log('Timestamped message.');
 [`Int8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array
 [`Map`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
 [`Object.assign()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
+[`Object.freeze()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze
 [`Promise`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
 [`Proxy`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
 [`Set`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
@@ -2235,30 +2556,24 @@ util.log('Timestamped message.');
 [`WeakMap`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
 [`WeakSet`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet
 [`WebAssembly.Module`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module
-[`assert.deepStrictEqual()`]: assert.html#assert_assert_deepstrictequal_actual_expected_message
-[`console.error()`]: console.html#console_console_error_data_args
+[`assert.deepStrictEqual()`]: assert.md#assertdeepstrictequalactual-expected-message
+[`console.error()`]: console.md#consoleerrordata-args
+[`napi_create_external()`]: n-api.md#napi_create_external
 [`target` and `handler`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#Terminology
-[`tty.hasColors()`]: tty.html#tty_writestream_hascolors_count_env
-[`util.format()`]: #util_util_format_format_args
-[`util.inspect()`]: #util_util_inspect_object_options
-[`util.promisify()`]: #util_util_promisify_original
-[`util.types.isAnyArrayBuffer()`]: #util_util_types_isanyarraybuffer_value
-[`util.types.isArrayBuffer()`]: #util_util_types_isarraybuffer_value
-[`util.types.isDate()`]: #util_util_types_isdate_value
-[`util.types.isNativeError()`]: #util_util_types_isnativeerror_value
-[`util.types.isSharedArrayBuffer()`]: #util_util_types_issharedarraybuffer_value
-[Common System Errors]: errors.html#errors_common_system_errors
-[Custom inspection functions on Objects]: #util_custom_inspection_functions_on_objects
-[Custom promisified functions]: #util_custom_promisified_functions
-[Customizing `util.inspect` colors]: #util_customizing_util_inspect_colors
-[Internationalization]: intl.html
-[Module Namespace Object]: https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects
-[WHATWG Encoding Standard]: https://encoding.spec.whatwg.org/
+[`tty.hasColors()`]: tty.md#writestreamhascolorscount-env
+[`util.format()`]: #utilformatformat-args
+[`util.inspect()`]: #utilinspectobject-options
+[`util.promisify()`]: #utilpromisifyoriginal
+[`util.types.isAnyArrayBuffer()`]: #utiltypesisanyarraybuffervalue
+[`util.types.isArrayBuffer()`]: #utiltypesisarraybuffervalue
+[`util.types.isDate()`]: #utiltypesisdatevalue
+[`util.types.isNativeError()`]: #utiltypesisnativeerrorvalue
+[`util.types.isSharedArrayBuffer()`]: #utiltypesissharedarraybuffervalue
 [async function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function
 [compare function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters
 [constructor]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/constructor
 [default sort]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 [global symbol registry]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/for
-[list of deprecated APIS]: deprecations.html#deprecations_list_of_deprecated_apis
+[list of deprecated APIS]: deprecations.md#list-of-deprecated-apis
 [semantically incompatible]: https://github.com/nodejs/node/issues/4179
-[util.inspect.custom]: #util_util_inspect_custom
+[util.inspect.custom]: #utilinspectcustom

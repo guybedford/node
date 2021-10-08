@@ -1,9 +1,53 @@
-# ECMAScript Modules
+# Modules: ECMAScript modules
 
 <!--introduced_in=v8.5.0-->
+
 <!-- type=misc -->
 
-> Stability: 1 - Experimental
+<!-- YAML
+added: v8.5.0
+changes:
+  - version:
+    - REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/37468
+    description:
+      Consolidate loader hooks, removed `getFormat`, `getSource`,
+      `transformSource`, and `getGlobalPreloadCode` hooks
+      added `load` and `globalPreload` hooks
+      allowed returning `format` from either `resolve` or `load` hooks.
+  - version:
+    - v15.3.0
+    - v14.17.0
+    - v12.22.0
+    pr-url: https://github.com/nodejs/node/pull/35781
+    description: Stabilize modules implementation.
+  - version:
+    - v14.13.0
+    - v12.20.0
+    pr-url: https://github.com/nodejs/node/pull/35249
+    description: Support for detection of CommonJS named exports.
+  - version: v14.8.0
+    pr-url: https://github.com/nodejs/node/pull/34558
+    description: Unflag Top-Level Await.
+  - version:
+    - v14.0.0
+    - v13.14.0
+    - v12.20.0
+    pr-url: https://github.com/nodejs/node/pull/31974
+    description: Remove experimental modules warning.
+  - version:
+    - v13.2.0
+    - v12.17.0
+    pr-url: https://github.com/nodejs/node/pull/29866
+    description: Loading ECMAScript modules no longer requires a command-line flag.
+  - version: v12.0.0
+    pr-url: https://github.com/nodejs/node/pull/26745
+    description:
+      Add support for ES modules using `.js` file extension via `package.json`
+      `"type"` field.
+-->
+
+> Stability: 2 - Stable
 
 ## Introduction
 
@@ -13,352 +57,68 @@ ECMAScript modules are [the official standard format][] to package JavaScript
 code for reuse. Modules are defined using a variety of [`import`][] and
 [`export`][] statements.
 
+The following example of an ES module exports a function:
+
+```js
+// addTwo.mjs
+function addTwo(num) {
+  return num + 2;
+}
+
+export { addTwo };
+```
+
+The following example of an ES module imports the function from `addTwo.mjs`:
+
+```js
+// app.mjs
+import { addTwo } from './addTwo.mjs';
+
+// Prints: 6
+console.log(addTwo(4));
+```
+
 Node.js fully supports ECMAScript modules as they are currently specified and
-provides limited interoperability between them and the existing module format,
+provides interoperability between them and its original module format,
 [CommonJS][].
 
-Node.js contains support for ES Modules based upon the
-[Node.js EP for ES Modules][] and the [ECMAScript-modules implementation][].
-
-Expect major changes in the implementation including interoperability support,
-specifier resolution, and default behavior.
+<!-- Anchors to make sure old links find a target -->
+<i id="esm_package_json_type_field"></i>
+<i id="esm_package_scope_and_file_extensions"></i>
+<i id="esm_input_type_flag"></i>
 
 ## Enabling
 
 <!-- type=misc -->
 
-The `--experimental-modules` flag can be used to enable support for
-ECMAScript modules (ES modules).
+Node.js treats JavaScript code as CommonJS modules by default.
+Authors can tell Node.js to treat JavaScript code as ECMAScript modules
+via the `.mjs` file extension, the `package.json` [`"type"`][] field, or the
+`--input-type` flag. See
+[Modules: Packages](packages.md#determining-module-system) for more
+details.
 
-Once enabled, Node.js will treat the following as ES modules when passed to
-`node` as the initial input, or when referenced by `import` statements within
-ES module code:
-
-* Files ending in `.mjs`.
-
-* Files ending in `.js`, or extensionless files, when the nearest parent
-  `package.json` file contains a top-level field `"type"` with a value of
-  `"module"`.
-
-* Strings passed in as an argument to `--eval` or `--print`, or piped to
-  `node` via `STDIN`, with the flag `--input-type=module`.
-
-Node.js will treat as CommonJS all other forms of input, such as `.js` files
-where the nearest parent `package.json` file contains no top-level `"type"`
-field, or string input without the flag `--input-type`. This behavior is to
-preserve backward compatibility. However, now that Node.js supports both
-CommonJS and ES modules, it is best to be explicit whenever possible. Node.js
-will treat the following as CommonJS when passed to `node` as the initial input,
-or when referenced by `import` statements within ES module code:
-
-* Files ending in `.cjs`.
-
-* Files ending in `.js`, or extensionless files, when the nearest parent
-  `package.json` file contains a top-level field `"type"` with a value of
-  `"commonjs"`.
-
-* Strings passed in as an argument to `--eval` or `--print`, or piped to
-  `node` via `STDIN`, with the flag `--input-type=commonjs`.
-
-### <code>package.json</code> <code>"type"</code> field
-
-Files ending with `.js` or `.mjs`, or lacking any extension,
-will be loaded as ES modules when the nearest parent `package.json` file
-contains a top-level field `"type"` with a value of `"module"`.
-
-The nearest parent `package.json` is defined as the first `package.json` found
-when searching in the current folder, that folder’s parent, and so on up
-until the root of the volume is reached.
-
-<!-- eslint-skip -->
-```js
-// package.json
-{
-  "type": "module"
-}
-```
-
-```sh
-# In same folder as above package.json
-node --experimental-modules my-app.js # Runs as ES module
-```
-
-If the nearest parent `package.json` lacks a `"type"` field, or contains
-`"type": "commonjs"`, extensionless and `.js` files are treated as CommonJS.
-If the volume root is reached and no `package.json` is found,
-Node.js defers to the default, a `package.json` with no `"type"`
-field.
-
-`import` statements of `.js` and extensionless files are treated as ES modules
-if the nearest parent `package.json` contains `"type": "module"`.
-
-```js
-// my-app.js, part of the same example as above
-import './startup.js'; // Loaded as ES module because of package.json
-```
-
-Package authors should include the `"type"` field, even in packages where all
-sources are CommonJS. Being explicit about the `type` of the package will
-future-proof the package in case the default type of Node.js ever changes, and
-it will also make things easier for build tools and loaders to determine how the
-files in the package should be interpreted.
-
-### Package Scope and File Extensions
-
-A folder containing a `package.json` file, and all subfolders below that
-folder down until the next folder containing another `package.json`, is
-considered a _package scope_. The `"type"` field defines how `.js` and
-extensionless files should be treated within a particular `package.json` file’s
-package scope. Every package in a project’s `node_modules` folder contains its
-own `package.json` file, so each project’s dependencies have their own package
-scopes. A `package.json` lacking a `"type"` field is treated as if it contained
-`"type": "commonjs"`.
-
-The package scope applies not only to initial entry points (`node
---experimental-modules my-app.js`) but also to files referenced by `import`
-statements and `import()` expressions.
-
-```js
-// my-app.js, in an ES module package scope because there is a package.json
-// file in the same folder with "type": "module".
-
-import './startup/init.js';
-// Loaded as ES module since ./startup contains no package.json file,
-// and therefore inherits the ES module package scope from one level up.
-
-import 'commonjs-package';
-// Loaded as CommonJS since ./node_modules/commonjs-package/package.json
-// lacks a "type" field or contains "type": "commonjs".
-
-import './node_modules/commonjs-package/index.js';
-// Loaded as CommonJS since ./node_modules/commonjs-package/package.json
-// lacks a "type" field or contains "type": "commonjs".
-```
-
-Files ending with `.mjs` are always loaded as ES modules regardless of package
-scope.
-
-Files ending with `.cjs` are always loaded as CommonJS regardless of package
-scope.
-
-```js
-import './legacy-file.cjs';
-// Loaded as CommonJS since .cjs is always loaded as CommonJS.
-
-import 'commonjs-package/src/index.mjs';
-// Loaded as ES module since .mjs is always loaded as ES module.
-```
-
-The `.mjs` and `.cjs` extensions may be used to mix types within the same
-package scope:
-
-* Within a `"type": "module"` package scope, Node.js can be instructed to
-  interpret a particular file as CommonJS by naming it with a `.cjs` extension
-  (since both `.js` and `.mjs` files are treated as ES modules within a
-  `"module"` package scope).
-
-* Within a `"type": "commonjs"` package scope, Node.js can be instructed to
-  interpret a particular file as an ES module by naming it with an `.mjs`
-  extension (since both `.js` and `.cjs` files are treated as CommonJS within a
-  `"commonjs"` package scope).
-
-### <code>--input-type</code> flag
-
-Strings passed in as an argument to `--eval` or `--print` (or `-e` or `-p`), or
-piped to `node` via `STDIN`, will be treated as ES modules when the
-`--input-type=module` flag is set.
-
-```sh
-node --experimental-modules --input-type=module --eval \
-  "import { sep } from 'path'; console.log(sep);"
-
-echo "import { sep } from 'path'; console.log(sep);" | \
-  node --experimental-modules --input-type=module
-```
-
-For completeness there is also `--input-type=commonjs`, for explicitly running
-string input as CommonJS. This is the default behavior if `--input-type` is
-unspecified.
+<!-- Anchors to make sure old links find a target -->
+<i id="esm_package_entry_points"></i>
+<i id="esm_main_entry_point_export"></i>
+<i id="esm_subpath_exports"></i>
+<i id="esm_package_exports_fallbacks"></i>
+<i id="esm_exports_sugar"></i>
+<i id="esm_conditional_exports"></i>
+<i id="esm_nested_conditions"></i>
+<i id="esm_self_referencing_a_package_using_its_name"></i>
+<i id="esm_internal_package_imports"></i>
+<i id="esm_dual_commonjs_es_module_packages"></i>
+<i id="esm_dual_package_hazard"></i>
+<i id="esm_writing_dual_packages_while_avoiding_or_minimizing_hazards"></i>
+<i id="esm_approach_1_use_an_es_module_wrapper"></i>
+<i id="esm_approach_2_isolate_state"></i>
 
 ## Packages
 
-### Package Entry Points
+This section was moved to [Modules: Packages](packages.md).
 
-The `package.json` `"main"` field defines the entry point for a package,
-whether the package is included into CommonJS via `require` or into an ES
-module via `import`.
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "type": "module",
-  "main": "./src/index.js"
-}
-```
-
-```js
-// ./my-app.mjs
-
-import { something } from 'es-module-package';
-// Loads from ./node_modules/es-module-package/src/index.js
-```
-
-An attempt to `require` the above `es-module-package` would attempt to load
-`./node_modules/es-module-package/src/index.js` as CommonJS, which would throw
-an error as Node.js would not be able to parse the `export` statement in
-CommonJS.
-
-As with `import` statements, for ES module usage the value of `"main"` must be
-a full path including extension: `"./index.mjs"`, not `"./index"`.
-
-If the `package.json` `"type"` field is omitted, a `.js` file in `"main"` will
-be interpreted as CommonJS.
-
-The `"main"` field can point to exactly one file, regardless of whether the
-package is referenced via `require` (in a CommonJS context) or `import` (in an
-ES module context).
-
-#### Compatibility with CommonJS-Only Versions of Node.js
-
-Prior to the introduction of support for ES modules in Node.js, it was a common
-pattern for package authors to include both CommonJS and ES module JavaScript
-sources in their package, with `package.json` `"main"` specifying the CommonJS
-entry point and `package.json` `"module"` specifying the ES module entry point.
-This enabled Node.js to run the CommonJS entry point while build tools such as
-bundlers used the ES module entry point, since Node.js ignored (and still
-ignores) `"module"`.
-
-Node.js can now run ES module entry points, but it remains impossible for a
-package to define separate CommonJS and ES module entry points. This is for good
-reason: the `pkg` variable created from `import pkg from 'pkg'` is not the same
-singleton as the `pkg` variable created from `const pkg = require('pkg')`, so if
-both are referenced within the same app (including dependencies), unexpected
-behavior might occur.
-
-There are two general approaches to addressing this limitation while still
-publishing a package that contains both CommonJS and ES module sources:
-
-1. Document a new ES module entry point that’s not the package `"main"`, e.g.
-   `import pkg from 'pkg/module.mjs'` (or `import 'pkg/esm'`, if using [package
-   exports][]). The package `"main"` would still point to a CommonJS file, and
-   thus the package would remain compatible with older versions of Node.js that
-   lack support for ES modules.
-
-1. Switch the package `"main"` entry point to an ES module file as part of a
-   breaking change version bump. This version and above would only be usable on
-   ES module-supporting versions of Node.js. If the package still contains a
-   CommonJS version, it would be accessible via a path within the package, e.g.
-   `require('pkg/commonjs')`; this is essentially the inverse of the previous
-   approach. Package consumers who are using CommonJS-only versions of Node.js
-   would need to update their code from `require('pkg')` to e.g.
-   `require('pkg/commonjs')`.
-
-Of course, a package could also include only CommonJS or only ES module sources.
-An existing package could make a semver major bump to an ES module-only version,
-that would only be supported in ES module-supporting versions of Node.js (and
-other runtimes). New packages could be published containing only ES module
-sources, and would be compatible only with ES module-supporting runtimes.
-
-### Package Exports
-
-By default, all subpaths from a package can be imported (`import 'pkg/x.js'`).
-Custom subpath aliasing and encapsulation can be provided through the
-`"exports"` field.
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": {
-    "./submodule": "./src/submodule.js"
-  }
-}
-```
-
-```js
-import submodule from 'es-module-package/submodule';
-// Loads ./node_modules/es-module-package/src/submodule.js
-```
-
-In addition to defining an alias, subpaths not defined by `"exports"` will
-throw when an attempt is made to import them:
-
-```js
-import submodule from 'es-module-package/private-module.js';
-// Throws - Module not found
-```
-
-> Note: this is not a strong encapsulation as any private modules can still be
-> loaded by absolute paths.
-
-Folders can also be mapped with package exports:
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": {
-    "./features/": "./src/features/"
-  }
-}
-```
-
-```js
-import feature from 'es-module-package/features/x.js';
-// Loads ./node_modules/es-module-package/src/features/x.js
-```
-
-If a package has no exports, setting `"exports": false` can be used instead of
-`"exports": {}` to indicate the package does not intend for submodules to be
-exposed.
-
-Exports can also be used to map the main entry point of a package:
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": {
-    ".": "./main.js"
-  }
-}
-```
-
-where the "." indicates loading the package without any subpath. Exports will
-always override any existing `"main"` value for both CommonJS and
-ES module packages.
-
-For packages with only a main entry point, an `"exports"` value of just
-a string is also supported:
-
-<!-- eslint-skip -->
-```js
-// ./node_modules/es-module-package/package.json
-{
-  "exports": "./main.js"
-}
-```
-
-Any invalid exports entries will be ignored. This includes exports not
-starting with `"./"` or a missing trailing `"/"` for directory exports.
-
-Array fallback support is provided for exports, similarly to import maps
-in order to be forward-compatible with fallback workflows in future:
-
-<!-- eslint-skip -->
-```js
-{
-  "exports": {
-    "./submodule": ["not:valid", "./submodule.js"]
-  }
-}
-```
-
-Since `"not:valid"` is not a supported target, `"./submodule.js"` is used
-instead as the fallback, as if it were the only target.
-
-## <code>import</code> Specifiers
+## `import` Specifiers
 
 ### Terminology
 
@@ -366,29 +126,64 @@ The _specifier_ of an `import` statement is the string after the `from` keyword,
 e.g. `'path'` in `import { sep } from 'path'`. Specifiers are also used in
 `export from` statements, and as the argument to an `import()` expression.
 
-There are four types of specifiers:
-
-* _Bare specifiers_ like `'some-package'`. They refer to an entry point of a
-  package by the package name.
-
-* _Deep import specifiers_ like `'some-package/lib/shuffle.mjs'`. They refer to
-  a path within a package prefixed by the package name.
+There are three types of specifiers:
 
 * _Relative specifiers_ like `'./startup.js'` or `'../config.mjs'`. They refer
-  to a path relative to the location of the importing file.
+  to a path relative to the location of the importing file. _The file extension
+  is always necessary for these._
+
+* _Bare specifiers_ like `'some-package'` or `'some-package/shuffle'`. They can
+  refer to the main entry point of a package by the package name, or a
+  specific feature module within a package prefixed by the package name as per
+  the examples respectively. _Including the file extension is only necessary
+  for packages without an [`"exports"`][] field._
 
 * _Absolute specifiers_ like `'file:///opt/nodejs/config.js'`. They refer
   directly and explicitly to a full path.
 
-Bare specifiers, and the bare specifier portion of deep import specifiers, are
-strings; but everything else in a specifier is a URL.
+Bare specifier resolutions are handled by the [Node.js module resolution
+algorithm][]. All other specifier resolutions are always only resolved with
+the standard relative [URL][] resolution semantics.
 
-Only `file:` and `data:` URLs are supported. A specifier like
-`'https://example.com/app.js'` may be supported by browsers but it is not
-supported in Node.js.
+Like in CommonJS, module files within packages can be accessed by appending a
+path to the package name unless the package’s [`package.json`][] contains an
+[`"exports"`][] field, in which case files within packages can only be accessed
+via the paths defined in [`"exports"`][].
 
-Specifiers may not begin with `/` or `//`. These are reserved for potential
-future use. The root of the current volume may be referenced via `file:///`.
+For details on these package resolution rules that apply to bare specifiers in
+the Node.js module resolution, see the [packages documentation](packages.md).
+
+### Mandatory file extensions
+
+A file extension must be provided when using the `import` keyword to resolve
+relative or absolute specifiers. Directory indexes (e.g. `'./startup/index.js'`)
+must also be fully specified.
+
+This behavior matches how `import` behaves in browser environments, assuming a
+typically configured server.
+
+### URLs
+
+ES modules are resolved and cached as URLs. This means that files containing
+special characters such as `#` and `?` need to be escaped.
+
+`file:`, `node:`, and `data:` URL schemes are supported. A specifier like
+`'https://example.com/app.js'` is not supported natively in Node.js unless using
+a [custom HTTPS loader][].
+
+#### `file:` URLs
+
+Modules are loaded multiple times if the `import` specifier used to resolve
+them has a different query or fragment.
+
+```js
+import './foo.mjs?query=1'; // loads ./foo.mjs with query of "?query=1"
+import './foo.mjs?query=2'; // loads ./foo.mjs with query of "?query=2"
+```
+
+The volume root may be referenced via `/`, `//` or `file:///`. Given the
+differences between [URL][] and path resolution (such as percent encoding
+details), it is recommended to use [url.pathToFileURL][] when importing a path.
 
 #### `data:` Imports
 
@@ -400,13 +195,13 @@ added: v12.10.0
 
 * `text/javascript` for ES Modules
 * `application/json` for JSON
-* `application/wasm` for WASM.
+* `application/wasm` for Wasm
 
 `data:` URLs only resolve [_Bare specifiers_][Terminology] for builtin modules
 and [_Absolute specifiers_][Terminology]. Resolving
-[_Relative specifiers_][Terminology] will not work because `data:` is not a
+[_Relative specifiers_][Terminology] does not work because `data:` is not a
 [special scheme][]. For example, attempting to load `./foo`
-from `data:text/javascript,import "./foo";` will fail to resolve since there
+from `data:text/javascript,import "./foo";` fails to resolve because there
 is no concept of relative resolution for `data:` URLs. An example of a `data:`
 URLs being used is:
 
@@ -415,147 +210,31 @@ import 'data:text/javascript,console.log("hello!");';
 import _ from 'data:application/json,"world!"';
 ```
 
-## import.meta
+#### `node:` Imports
 
-* {Object}
+<!-- YAML
+added:
+  - v14.13.1
+  - v12.20.0
+changes:
+  - version:
+      - v16.0.0
+      - v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/37246
+    description: Added `node:` import support to `require(...)`.
+-->
 
-The `import.meta` metaproperty is an `Object` that contains the following
-property:
-
-* `url` {string} The absolute `file:` URL of the module.
-
-## Differences Between ES Modules and CommonJS
-
-### Mandatory file extensions
-
-A file extension must be provided when using the `import` keyword. Directory
-indexes (e.g. `'./startup/index.js'`) must also be fully specified.
-
-This behavior matches how `import` behaves in browser environments, assuming a
-typically configured server.
-
-### No <code>NODE_PATH</code>
-
-`NODE_PATH` is not part of resolving `import` specifiers. Please use symlinks
-if this behavior is desired.
-
-### No <code>require</code>, <code>exports</code>, <code>module.exports</code>, <code>\_\_filename</code>, <code>\_\_dirname</code>
-
-These CommonJS variables are not available in ES modules.
-
-`require` can be imported into an ES module using [`module.createRequire()`][].
-
-Equivalents of `__filename` and `__dirname` can be created inside of each file
-via [`import.meta.url`][].
+`node:` URLs are supported as an alternative means to load Node.js builtin
+modules. This URL scheme allows for builtin modules to be referenced by valid
+absolute URL strings.
 
 ```js
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-```
-
-### No <code>require.extensions</code>
-
-`require.extensions` is not used by `import`. The expectation is that loader
-hooks can provide this workflow in the future.
-
-### No <code>require.cache</code>
-
-`require.cache` is not used by `import`. It has a separate cache.
-
-### URL-based paths
-
-ES modules are resolved and cached based upon
-[URL](https://url.spec.whatwg.org/) semantics. This means that files containing
-special characters such as `#` and `?` need to be escaped.
-
-Modules will be loaded multiple times if the `import` specifier used to resolve
-them have a different query or fragment.
-
-```js
-import './foo.mjs?query=1'; // loads ./foo.mjs with query of "?query=1"
-import './foo.mjs?query=2'; // loads ./foo.mjs with query of "?query=2"
-```
-
-For now, only modules using the `file:` protocol can be loaded.
-
-## Interoperability with CommonJS
-
-### <code>require</code>
-
-`require` always treats the files it references as CommonJS. This applies
-whether `require` is used the traditional way within a CommonJS environment, or
-in an ES module environment using [`module.createRequire()`][].
-
-To include an ES module into CommonJS, use [`import()`][].
-
-### <code>import</code> statements
-
-An `import` statement can reference an ES module, a CommonJS module, or JSON.
-Other file types such as Native modules are not supported. For those,
-use [`module.createRequire()`][].
-
-`import` statements are permitted only in ES modules. For similar functionality
-in CommonJS, see [`import()`][].
-
-The _specifier_ of an `import` statement (the string after the `from` keyword)
-can either be an URL-style relative path like `'./file.mjs'` or a package name
-like `'fs'`.
-
-Like in CommonJS, files within packages can be accessed by appending a path to
-the package name.
-
-```js
-import { sin, cos } from 'geometry/trigonometry-functions.mjs';
-```
-
-> Currently only the “default export” is supported for CommonJS files or
-> packages:
->
-> <!-- eslint-disable no-duplicate-imports -->
-> ```js
-> import packageMain from 'commonjs-package'; // Works
->
-> import { method } from 'commonjs-package'; // Errors
-> ```
->
-> There are ongoing efforts to make the latter code possible.
-
-### <code>import()</code> expressions
-
-Dynamic `import()` is supported in both CommonJS and ES modules. It can be used
-to include ES module files from CommonJS code.
-
-```js
-(async () => {
-  await import('./my-app.mjs');
-})();
-```
-
-## CommonJS, JSON, and Native Modules
-
-CommonJS, JSON, and Native modules can be used with
-[`module.createRequire()`][].
-
-```js
-// cjs.js
-module.exports = 'cjs';
-
-// esm.mjs
-import { createRequire } from 'module';
-import { fileURLToPath as fromURL } from 'url';
-
-const require = createRequire(fromURL(import.meta.url));
-
-const cjs = require('./cjs');
-cjs === 'cjs'; // true
+import fs from 'node:fs/promises';
 ```
 
 ## Builtin modules
 
-Builtin modules will provide named exports of their public API. A
+[Core modules][] provide named exports of their public API. A
 default export is also provided which is the value of the CommonJS exports.
 The default export can be used for, among other things, modifying the named
 exports. Named exports of builtin modules are updated only by calling
@@ -580,6 +259,7 @@ readFile('./foo.txt', (err, source) => {
 ```js
 import fs, { readFileSync } from 'fs';
 import { syncBuiltinESMExports } from 'module';
+import { Buffer } from 'buffer';
 
 fs.readFileSync = () => Buffer.from('Hello, ESM');
 syncBuiltinESMExports();
@@ -587,18 +267,256 @@ syncBuiltinESMExports();
 fs.readFileSync === readFileSync;
 ```
 
-## Experimental JSON Modules
+## `import()` expressions
+
+[Dynamic `import()`][] is supported in both CommonJS and ES modules. In CommonJS
+modules it can be used to load ES modules.
+
+## `import.meta`
+
+* {Object}
+
+The `import.meta` meta property is an `Object` that contains the following
+properties.
+
+### `import.meta.url`
+
+* {string} The absolute `file:` URL of the module.
+
+This is defined exactly the same as it is in browsers providing the URL of the
+current module file.
+
+This enables useful patterns such as relative file loading:
+
+```js
+import { readFileSync } from 'fs';
+const buffer = readFileSync(new URL('./data.proto', import.meta.url));
+```
+
+### `import.meta.resolve(specifier[, parent])`
+<!--
+added:
+  - v13.9.0
+  - v12.16.2
+changes:
+  - version:
+      - v16.2.0
+      - v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/38587
+    description: Add support for WHATWG `URL` object to `parentURL` parameter.
+-->
+
+> Stability: 1 - Experimental
+
+This feature is only available with the `--experimental-import-meta-resolve`
+command flag enabled.
+
+* `specifier` {string} The module specifier to resolve relative to `parent`.
+* `parent` {string|URL} The absolute parent module URL to resolve from. If none
+  is specified, the value of `import.meta.url` is used as the default.
+* Returns: {Promise}
+
+Provides a module-relative resolution function scoped to each module, returning
+the URL string.
+
+<!-- eslint-skip -->
+```js
+const dependencyAsset = await import.meta.resolve('component-lib/asset.css');
+```
+
+`import.meta.resolve` also accepts a second argument which is the parent module
+from which to resolve from:
+
+<!-- eslint-skip -->
+```js
+await import.meta.resolve('./dep', import.meta.url);
+```
+
+This function is asynchronous because the ES module resolver in Node.js is
+allowed to be asynchronous.
+
+## Interoperability with CommonJS
+
+### `import` statements
+
+An `import` statement can reference an ES module or a CommonJS module.
+`import` statements are permitted only in ES modules, but dynamic [`import()`][]
+expressions are supported in CommonJS for loading ES modules.
+
+When importing [CommonJS modules](#commonjs-namespaces), the
+`module.exports` object is provided as the default export. Named exports may be
+available, provided by static analysis as a convenience for better ecosystem
+compatibility.
+
+### `require`
+
+The CommonJS module `require` always treats the files it references as CommonJS.
+
+Using `require` to load an ES module is not supported because ES modules have
+asynchronous execution. Instead, use [`import()`][] to load an ES module
+from a CommonJS module.
+
+### CommonJS Namespaces
+
+CommonJS modules consist of a `module.exports` object which can be of any type.
+
+When importing a CommonJS module, it can be reliably imported using the ES
+module default import or its corresponding sugar syntax:
+
+<!-- eslint-disable no-duplicate-imports -->
+```js
+import { default as cjs } from 'cjs';
+
+// The following import statement is "syntax sugar" (equivalent but sweeter)
+// for `{ default as cjsSugar }` in the above import statement:
+import cjsSugar from 'cjs';
+
+console.log(cjs);
+console.log(cjs === cjsSugar);
+// Prints:
+//   <module.exports>
+//   true
+```
+
+The ECMAScript Module Namespace representation of a CommonJS module is always
+a namespace with a `default` export key pointing to the CommonJS
+`module.exports` value.
+
+This Module Namespace Exotic Object can be directly observed either when using
+`import * as m from 'cjs'` or a dynamic import:
+
+<!-- eslint-skip -->
+```js
+import * as m from 'cjs';
+console.log(m);
+console.log(m === await import('cjs'));
+// Prints:
+//   [Module] { default: <module.exports> }
+//   true
+```
+
+For better compatibility with existing usage in the JS ecosystem, Node.js
+in addition attempts to determine the CommonJS named exports of every imported
+CommonJS module to provide them as separate ES module exports using a static
+analysis process.
+
+For example, consider a CommonJS module written:
+
+```cjs
+// cjs.cjs
+exports.name = 'exported';
+```
+
+The preceding module supports named imports in ES modules:
+
+<!-- eslint-disable no-duplicate-imports -->
+```js
+import { name } from './cjs.cjs';
+console.log(name);
+// Prints: 'exported'
+
+import cjs from './cjs.cjs';
+console.log(cjs);
+// Prints: { name: 'exported' }
+
+import * as m from './cjs.cjs';
+console.log(m);
+// Prints: [Module] { default: { name: 'exported' }, name: 'exported' }
+```
+
+As can be seen from the last example of the Module Namespace Exotic Object being
+logged, the `name` export is copied off of the `module.exports` object and set
+directly on the ES module namespace when the module is imported.
+
+Live binding updates or new exports added to `module.exports` are not detected
+for these named exports.
+
+The detection of named exports is based on common syntax patterns but does not
+always correctly detect named exports. In these cases, using the default
+import form described above can be a better option.
+
+Named exports detection covers many common export patterns, reexport patterns
+and build tool and transpiler outputs. See [cjs-module-lexer][] for the exact
+semantics implemented.
+
+### Differences between ES modules and CommonJS
+
+#### No `require`, `exports` or `module.exports`
+
+In most cases, the ES module `import` can be used to load CommonJS modules.
+
+If needed, a `require` function can be constructed within an ES module using
+[`module.createRequire()`][].
+
+#### No `__filename` or `__dirname`
+
+These CommonJS variables are not available in ES modules.
+
+`__filename` and `__dirname` use cases can be replicated via
+[`import.meta.url`][].
+
+#### No JSON Module Loading
+
+JSON imports are still experimental and only supported via the
+`--experimental-json-modules` flag.
+
+Local JSON files can be loaded relative to `import.meta.url` with `fs` directly:
+
+<!-- eslint-skip -->
+```js
+import { readFile } from 'fs/promises';
+const json = JSON.parse(await readFile(new URL('./dat.json', import.meta.url)));
+```
+
+Alternatively `module.createRequire()` can be used.
+
+#### No Native Module Loading
+
+Native modules are not currently supported with ES module imports.
+
+They can instead be loaded with [`module.createRequire()`][] or
+[`process.dlopen`][].
+
+#### No `require.resolve`
+
+Relative resolution can be handled via `new URL('./local', import.meta.url)`.
+
+For a complete `require.resolve` replacement, there is a flagged experimental
+[`import.meta.resolve`][] API.
+
+Alternatively `module.createRequire()` can be used.
+
+#### No `NODE_PATH`
+
+`NODE_PATH` is not part of resolving `import` specifiers. Please use symlinks
+if this behavior is desired.
+
+#### No `require.extensions`
+
+`require.extensions` is not used by `import`. The expectation is that loader
+hooks can provide this workflow in the future.
+
+#### No `require.cache`
+
+`require.cache` is not used by `import` as the ES module loader has its own
+separate cache.
+
+<i id="esm_experimental_json_modules"></i>
+
+## JSON modules
+
+> Stability: 1 - Experimental
 
 Currently importing JSON modules are only supported in the `commonjs` mode
 and are loaded using the CJS loader. [WHATWG JSON modules specification][] are
 still being standardized, and are experimentally supported by including the
 additional flag `--experimental-json-modules` when running Node.js.
 
-When the `--experimental-json-modules` flag is included both the
-`commonjs` and `module` mode will use the new experimental JSON
-loader. The imported JSON only exposes a `default`, there is no
+When the `--experimental-json-modules` flag is included, both the
+`commonjs` and `module` mode use the new experimental JSON
+loader. The imported JSON only exposes a `default`. There is no
 support for named exports. A cache entry is created in the CommonJS
-cache, to avoid duplication. The same object will be returned in
+cache to avoid duplication. The same object is returned in
 CommonJS if the JSON module has already been imported from the
 same path.
 
@@ -613,11 +531,15 @@ The `--experimental-json-modules` flag is needed for the module
 to work.
 
 ```bash
-node --experimental-modules index.mjs # fails
-node --experimental-modules --experimental-json-modules index.mjs # works
+node index.mjs # fails
+node --experimental-json-modules index.mjs # works
 ```
 
-## Experimental Wasm Modules
+<i id="esm_experimental_wasm_modules"></i>
+
+## Wasm modules
+
+> Stability: 1 - Experimental
 
 Importing Web Assembly modules is supported under the
 `--experimental-wasm-modules` flag, allowing any `.wasm` files to be
@@ -636,12 +558,44 @@ console.log(M);
 executed under:
 
 ```bash
-node --experimental-modules --experimental-wasm-modules index.mjs
+node --experimental-wasm-modules index.mjs
 ```
 
 would provide the exports interface for the instantiation of `module.wasm`.
 
-## Experimental Loader hooks
+<i id="esm_experimental_top_level_await"></i>
+
+## Top-level `await`
+
+> Stability: 1 - Experimental
+
+The `await` keyword may be used in the top level (outside of async functions)
+within modules as per the [ECMAScript Top-Level `await` proposal][].
+
+Assuming an `a.mjs` with
+
+<!-- eslint-skip -->
+```js
+export const five = await Promise.resolve(5);
+```
+
+And a `b.mjs` with
+
+```js
+import { five } from './a.mjs';
+
+console.log(five); // Logs `5`
+```
+
+```bash
+node b.mjs # works
+```
+
+<i id="esm_experimental_loaders"></i>
+
+## Loaders
+
+> Stability: 1 - Experimental
 
 **Note: This API is currently being redesigned and will still change.**
 
@@ -653,130 +607,414 @@ provided via a `--experimental-loader ./loader-name.mjs` argument to Node.js.
 When hooks are used they only apply to ES module loading and not to any
 CommonJS modules loaded.
 
-### Resolve hook
+### Hooks
 
-The resolve hook returns the resolved file URL and module format for a
-given module specifier and parent file URL:
+#### `resolve(specifier, context, defaultResolve)`
 
-```js
-import { URL, pathToFileURL } from 'url';
-const baseURL = pathToFileURL(process.cwd()).href;
+> Note: The loaders API is being redesigned. This hook may disappear or its
+> signature may change. Do not rely on the API described below.
 
-/**
- * @param {string} specifier
- * @param {string} parentModuleURL
- * @param {function} defaultResolver
- */
-export async function resolve(specifier,
-                              parentModuleURL = baseURL,
-                              defaultResolver) {
-  return {
-    url: new URL(specifier, parentModuleURL).href,
-    format: 'module'
-  };
-}
-```
+* `specifier` {string}
+* `context` {Object}
+  * `conditions` {string[]}
+  * `parentURL` {string|undefined}
+* `defaultResolve` {Function} The Node.js default resolver.
+* Returns: {Object}
+  * `format` {string|null|undefined}
+    `'builtin' | 'commonjs' | 'json' | 'module' | 'wasm'`
+  * `url` {string} The absolute url to the import target (such as `file://…`)
 
-The `parentModuleURL` is provided as `undefined` when performing main Node.js
-load itself.
+The `resolve` hook returns the resolved file URL for a given module specifier
+and parent URL, and optionally its format (such as `'module'`) as a hint to the
+`load` hook. If a format is specified, the `load` hook is ultimately responsible
+for providing the final `format` value (and it is free to ignore the hint
+provided by `resolve`); if `resolve` provides a `format`, a custom `load`
+hook is required even if only to pass the value to the Node.js default `load`
+hook.
 
-The default Node.js ES module resolution function is provided as a third
-argument to the resolver for easy compatibility workflows.
+The module specifier is the string in an `import` statement or
+`import()` expression, and the parent URL is the URL of the module that imported
+this one, or `undefined` if this is the main entry point for the application.
 
-In addition to returning the resolved file URL value, the resolve hook also
-returns a `format` property specifying the module format of the resolved
-module. This can be one of the following:
+The `conditions` property in `context` is an array of conditions for
+[package exports conditions][Conditional Exports] that apply to this resolution
+request. They can be used for looking up conditional mappings elsewhere or to
+modify the list when calling the default resolution logic.
 
-| `format` | Description |
-| --- | --- |
-| `'builtin'` | Load a Node.js builtin module |
-| `'commonjs'` | Load a Node.js CommonJS module |
-| `'dynamic'` | Use a [dynamic instantiate hook][] |
-| `'json'` | Load a JSON file |
-| `'module'` | Load a standard JavaScript module |
-| `'wasm'` | Load a WebAssembly module |
-
-For example, a dummy loader to load JavaScript restricted to browser resolution
-rules with only JS file extension and Node.js builtin modules support could
-be written:
+The current [package exports conditions][Conditional Exports] are always in
+the `context.conditions` array passed into the hook. To guarantee _default
+Node.js module specifier resolution behavior_ when calling `defaultResolve`, the
+`context.conditions` array passed to it _must_ include _all_ elements of the
+`context.conditions` array originally passed into the `resolve` hook.
 
 ```js
-import path from 'path';
-import process from 'process';
-import Module from 'module';
-import { URL, pathToFileURL } from 'url';
-
-const builtins = Module.builtinModules;
-const JS_EXTENSIONS = new Set(['.js', '.mjs']);
-
-const baseURL = pathToFileURL(process.cwd()).href;
-
 /**
  * @param {string} specifier
- * @param {string} parentModuleURL
- * @param {function} defaultResolver
+ * @param {{
+ *   conditions: !Array<string>,
+ *   parentURL: !(string | undefined),
+ * }} context
+ * @param {Function} defaultResolve
+ * @returns {Promise<{ url: string }>}
  */
-export async function resolve(specifier,
-                              parentModuleURL = baseURL,
-                              defaultResolver) {
-  if (builtins.includes(specifier)) {
+export async function resolve(specifier, context, defaultResolve) {
+  const { parentURL = null } = context;
+  if (Math.random() > 0.5) { // Some condition.
+    // For some or all specifiers, do some custom logic for resolving.
+    // Always return an object of the form {url: <string>}.
     return {
-      url: specifier,
-      format: 'builtin'
+      url: parentURL ?
+        new URL(specifier, parentURL).href :
+        new URL(specifier).href,
     };
   }
-  if (/^\.{0,2}[/]/.test(specifier) !== true && !specifier.startsWith('file:')) {
-    // For node_modules support:
-    // return defaultResolver(specifier, parentModuleURL);
-    throw new Error(
-      `imports must begin with '/', './', or '../'; '${specifier}' does not`);
+  if (Math.random() < 0.5) { // Another condition.
+    // When calling `defaultResolve`, the arguments can be modified. In this
+    // case it's adding another value for matching conditional exports.
+    return defaultResolve(specifier, {
+      ...context,
+      conditions: [...context.conditions, 'another-condition'],
+    });
   }
-  const resolved = new URL(specifier, parentModuleURL);
-  const ext = path.extname(resolved.pathname);
-  if (!JS_EXTENSIONS.has(ext)) {
-    throw new Error(
-      `Cannot load file with non-JavaScript file extension ${ext}.`);
-  }
-  return {
-    url: resolved.href,
-    format: 'module'
-  };
+  // Defer to Node.js for all other specifiers.
+  return defaultResolve(specifier, context, defaultResolve);
 }
 ```
 
-With this loader, running:
+#### `load(url, context, defaultLoad)`
 
-```console
-NODE_OPTIONS='--experimental-modules --experimental-loader ./custom-loader.mjs' node x.js
-```
+> Note: The loaders API is being redesigned. This hook may disappear or its
+> signature may change. Do not rely on the API described below.
 
-would load the module `x.js` as an ES module with relative resolution support
-(with `node_modules` loading skipped in this example).
+> Note: In a previous version of this API, this was split across 3 separate, now
+> deprecated, hooks (`getFormat`, `getSource`, and `transformSource`).
 
-### Dynamic instantiate hook
+* `url` {string}
+* `context` {Object}
+  * `format` {string|null|undefined} The format optionally supplied by the
+    `resolve` hook.
+* `defaultLoad` {Function}
+* Returns: {Object}
+  * `format` {string}
+  * `source` {string|ArrayBuffer|TypedArray}
 
-To create a custom dynamic module that doesn't correspond to one of the
-existing `format` interpretations, the `dynamicInstantiate` hook can be used.
-This hook is called only for modules that return `format: 'dynamic'` from
-the `resolve` hook.
+The `load` hook provides a way to define a custom method of determining how
+a URL should be interpreted, retrieved, and parsed.
+
+The final value of `format` must be one of the following:
+
+| `format`     | Description                    | Acceptable types for `source` returned by `load`      |
+| ------------ | ------------------------------ | ----------------------------------------------------- |
+| `'builtin'`  | Load a Node.js builtin module  | Not applicable                                        |
+| `'commonjs'` | Load a Node.js CommonJS module | Not applicable                                        |
+| `'json'`     | Load a JSON file               | { [`string`][], [`ArrayBuffer`][], [`TypedArray`][] } |
+| `'module'`   | Load an ES module              | { [`string`][], [`ArrayBuffer`][], [`TypedArray`][] } |
+| `'wasm'`     | Load a WebAssembly module      | { [`ArrayBuffer`][], [`TypedArray`][] }               |
+
+The value of `source` is ignored for type `'builtin'` because currently it is
+not possible to replace the value of a Node.js builtin (core) module. The value
+of `source` is ignored for type `'commonjs'` because the CommonJS module loader
+does not provide a mechanism for the ES module loader to override the
+[CommonJS module return value](#commonjs-namespaces). This limitation might be
+overcome in the future.
+
+> **Caveat**: The ESM `load` hook and namespaced exports from CommonJS modules
+> are incompatible. Attempting to use them together will result in an empty
+> object from the import. This may be addressed in the future.
+
+> Note: These types all correspond to classes defined in ECMAScript.
+
+* The specific [`ArrayBuffer`][] object is a [`SharedArrayBuffer`][].
+* The specific [`TypedArray`][] object is a [`Uint8Array`][].
+
+If the source value of a text-based format (i.e., `'json'`, `'module'`)
+is not a string, it is converted to a string using [`util.TextDecoder`][].
+
+The `load` hook provides a way to define a custom method for retrieving the
+source code of an ES module specifier. This would allow a loader to potentially
+avoid reading files from disk. It could also be used to map an unrecognized
+format to a supported one, for example `yaml` to `module`.
 
 ```js
-export async function dynamicInstantiate(url) {
-  return {
-    exports: ['customExportName'],
-    execute: (exports) => {
-      // Get and set functions provided for pre-allocated export names
-      exports.customExportName.set('value');
-    }
-  };
+/**
+ * @param {string} url
+ * @param {{
+    format: string,
+  }} context If resolve settled with a `format`, that value is included here.
+ * @param {Function} defaultLoad
+ * @returns {Promise<{
+    format: !string,
+    source: !(string | ArrayBuffer | SharedArrayBuffer | Uint8Array),
+  }>}
+ */
+export async function load(url, context, defaultLoad) {
+  const { format } = context;
+  if (Math.random() > 0.5) { // Some condition.
+    /*
+      For some or all URLs, do some custom logic for retrieving the source.
+      Always return an object of the form {
+        format: <string>,
+        source: <string|buffer>,
+      }.
+    */
+    return {
+      format,
+      source: '...',
+    };
+  }
+  // Defer to Node.js for all other URLs.
+  return defaultLoad(url, context, defaultLoad);
 }
 ```
 
-With the list of module exports provided upfront, the `execute` function will
-then be called at the exact point of module evaluation order for that module
-in the import tree.
+In a more advanced scenario, this can also be used to transform an unsupported
+source to a supported one (see [Examples](#examples) below).
 
-## Resolution Algorithm
+#### `globalPreload()`
+
+> Note: The loaders API is being redesigned. This hook may disappear or its
+> signature may change. Do not rely on the API described below.
+
+> Note: In a previous version of this API, this hook was named
+> `getGlobalPreloadCode`.
+
+* Returns: {string}
+
+Sometimes it might be necessary to run some code inside of the same global
+scope that the application runs in. This hook allows the return of a string
+that is run as a sloppy-mode script on startup.
+
+Similar to how CommonJS wrappers work, the code runs in an implicit function
+scope. The only argument is a `require`-like function that can be used to load
+builtins like "fs": `getBuiltin(request: string)`.
+
+If the code needs more advanced `require` features, it has to construct
+its own `require` using  `module.createRequire()`.
+
+```js
+/**
+ * @returns {string} Code to run before application startup
+ */
+export function globalPreload() {
+  return `\
+globalThis.someInjectedProperty = 42;
+console.log('I just set some globals!');
+
+const { createRequire } = getBuiltin('module');
+const { cwd } = getBuiltin('process');
+
+const require = createRequire(cwd() + '/<preload>');
+// [...]
+`;
+}
+```
+
+### Examples
+
+The various loader hooks can be used together to accomplish wide-ranging
+customizations of Node.js’ code loading and evaluation behaviors.
+
+#### HTTPS loader
+
+In current Node.js, specifiers starting with `https://` are unsupported. The
+loader below registers hooks to enable rudimentary support for such specifiers.
+While this may seem like a significant improvement to Node.js core
+functionality, there are substantial downsides to actually using this loader:
+performance is much slower than loading files from disk, there is no caching,
+and there is no security.
+
+```js
+// https-loader.mjs
+import { get } from 'https';
+
+export function resolve(specifier, context, defaultResolve) {
+  const { parentURL = null } = context;
+
+  // Normally Node.js would error on specifiers starting with 'https://', so
+  // this hook intercepts them and converts them into absolute URLs to be
+  // passed along to the later hooks below.
+  if (specifier.startsWith('https://')) {
+    return {
+      url: specifier
+    };
+  } else if (parentURL && parentURL.startsWith('https://')) {
+    return {
+      url: new URL(specifier, parentURL).href
+    };
+  }
+
+  // Let Node.js handle all other specifiers.
+  return defaultResolve(specifier, context, defaultResolve);
+}
+
+export function load(url, context, defaultLoad) {
+  // For JavaScript to be loaded over the network, we need to fetch and
+  // return it.
+  if (url.startsWith('https://')) {
+    return new Promise((resolve, reject) => {
+      get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => resolve({
+          // This example assumes all network-provided JavaScript is ES module
+          // code.
+          format: 'module',
+          source: data,
+        }));
+      }).on('error', (err) => reject(err));
+    });
+  }
+
+  // Let Node.js handle all other URLs.
+  return defaultLoad(url, context, defaultLoad);
+}
+```
+
+```js
+// main.mjs
+import { VERSION } from 'https://coffeescript.org/browser-compiler-modern/coffeescript.js';
+
+console.log(VERSION);
+```
+
+With the preceding loader, running
+`node --experimental-loader ./https-loader.mjs ./main.mjs`
+prints the current version of CoffeeScript per the module at the URL in
+`main.mjs`.
+
+#### Transpiler loader
+
+Sources that are in formats Node.js doesn’t understand can be converted into
+JavaScript using the [`load` hook][load hook]. Before that hook gets called,
+however, a [`resolve` hook][resolve hook] hook needs to tell Node.js not to
+throw an error on unknown file types.
+
+This is less performant than transpiling source files before running
+Node.js; a transpiler loader should only be used for development and testing
+purposes.
+
+```js
+// coffeescript-loader.mjs
+import { readFile } from 'fs/promises';
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+import { dirname, extname, resolve as resolvePath } from 'path';
+import { cwd } from 'process';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+import CoffeeScript from 'coffeescript';
+
+const baseURL = pathToFileURL(`${cwd}/`).href;
+
+// CoffeeScript files end in .coffee, .litcoffee or .coffee.md.
+const extensionsRegex = /\.coffee$|\.litcoffee$|\.coffee\.md$/;
+
+export async function resolve(specifier, context, defaultResolve) {
+  const { parentURL = baseURL } = context;
+
+  // Node.js normally errors on unknown file extensions, so return a URL for
+  // specifiers ending in the CoffeeScript file extensions.
+  if (extensionsRegex.test(specifier)) {
+    return {
+      url: new URL(specifier, parentURL).href
+    };
+  }
+
+  // Let Node.js handle all other specifiers.
+  return defaultResolve(specifier, context, defaultResolve);
+}
+
+export async function load(url, context, defaultLoad) {
+  // Now that we patched resolve to let CoffeeScript URLs through, we need to
+  // tell Node.js what format such URLs should be interpreted as. Because
+  // CoffeeScript transpiles into JavaScript, it should be one of the two
+  // JavaScript formats: 'commonjs' or 'module'.
+  if (extensionsRegex.test(url)) {
+    // CoffeeScript files can be either CommonJS or ES modules, so we want any
+    // CoffeeScript file to be treated by Node.js the same as a .js file at the
+    // same location. To determine how Node.js would interpret an arbitrary .js
+    // file, search up the file system for the nearest parent package.json file
+    // and read its "type" field.
+    const format = await getPackageType(url);
+    // When a hook returns a format of 'commonjs', `source` is be ignored.
+    // To handle CommonJS files, a handler needs to be registered with
+    // `require.extensions` in order to process the files with the CommonJS
+    // loader. Avoiding the need for a separate CommonJS handler is a future
+    // enhancement planned for ES module loaders.
+    if (format === 'commonjs') {
+      return { format };
+    }
+
+    const { source: rawSource } = await defaultLoad(url, { format });
+    // This hook converts CoffeeScript source code into JavaScript source code
+    // for all imported CoffeeScript files.
+    const transformedSource = CoffeeScript.compile(rawSource.toString(), {
+      bare: true,
+      filename: url,
+    });
+
+    return {
+      format,
+      source: transformedSource,
+    };
+  }
+
+  // Let Node.js handle all other URLs.
+  return defaultLoad(url, context, defaultLoad);
+}
+
+async function getPackageType(url) {
+  // `url` is only a file path during the first iteration when passed the
+  // resolved url from the load() hook
+  // an actual file path from load() will contain a file extension as it's
+  // required by the spec
+  // this simple truthy check for whether `url` contains a file extension will
+  // work for most projects but does not cover some edge-cases (such as
+  // extension-less files or a url ending in a trailing space)
+  const isFilePath = !!extname(url);
+  // If it is a file path, get the directory it's in
+  const dir = isFilePath ?
+    dirname(fileURLToPath(url)) :
+    url;
+  // Compose a file path to a package.json in the same directory,
+  // which may or may not exist
+  const packagePath = resolvePath(dir, 'package.json');
+  // Try to read the possibly nonexistent package.json
+  const type = await readFile(packagePath, { encoding: 'utf8' })
+    .then((filestring) => JSON.parse(filestring).type)
+    .catch((err) => {
+      if (err?.code !== 'ENOENT') console.error(err);
+    });
+  // Ff package.json existed and contained a `type` field with a value, voila
+  if (type) return type;
+  // Otherwise, (if not at the root) continue checking the next directory up
+  // If at the root, stop and return false
+  return dir.length > 1 && getPackageType(resolvePath(dir, '..'));
+}
+```
+
+```coffee
+# main.coffee
+import { scream } from './scream.coffee'
+console.log scream 'hello, world'
+
+import { version } from 'process'
+console.log "Brought to you by Node.js version #{version}"
+```
+
+```coffee
+# scream.coffee
+export scream = (str) -> str.toUpperCase()
+```
+
+With the preceding loader, running
+`node --experimental-loader ./coffeescript-loader.mjs main.coffee`
+causes `main.coffee` to be turned into JavaScript after its source code is
+loaded from disk but before Node.js executes it; and so on for any `.coffee`,
+`.litcoffee` or `.coffee.md` files referenced via `import` statements of any
+loaded file.
+
+## Resolution algorithm
 
 ### Features
 
@@ -789,75 +1027,92 @@ The resolver has the following properties:
 * No folder mains
 * Bare specifier package resolution lookup through node_modules
 
-### Resolver Algorithm
+### Resolver algorithm
 
 The algorithm to load an ES module specifier is given through the
 **ESM_RESOLVE** method below. It returns the resolved URL for a
-module specifier relative to a parentURL, in addition to the unique module
-format for that resolved URL given by the **ESM_FORMAT** routine.
+module specifier relative to a parentURL.
 
-The _"module"_ format is returned for an ECMAScript Module, while the
-_"commonjs"_ format is used to indicate loading through the legacy
-CommonJS loader. Additional formats such as _"addon"_ can be extended in future
-updates.
+The algorithm to determine the module format of a resolved URL is
+provided by **ESM_FORMAT**, which returns the unique module
+format for any file. The _"module"_ format is returned for an ECMAScript
+Module, while the _"commonjs"_ format is used to indicate loading through the
+legacy CommonJS loader. Additional formats such as _"addon"_ can be extended in
+future updates.
 
 In the following algorithms, all subroutine errors are propagated as errors
 of these top-level routines unless stated otherwise.
 
-_isMain_ is **true** when resolving the Node.js application entry point.
+_defaultConditions_ is the conditional environment name array,
+`["node", "import"]`.
 
-<details>
-<summary>Resolver algorithm specification</summary>
+The resolver can throw the following errors:
+* _Invalid Module Specifier_: Module specifier is an invalid URL, package name
+  or package subpath specifier.
+* _Invalid Package Configuration_: package.json configuration is invalid or
+  contains an invalid configuration.
+* _Invalid Package Target_: Package exports or imports define a target module
+  for the package that is an invalid type or string target.
+* _Package Path Not Exported_: Package exports do not define or permit a target
+  subpath in the package for the given module.
+* _Package Import Not Defined_: Package imports do not define the specifier.
+* _Module Not Found_: The package or module requested does not exist.
+* _Unsupported Directory Import_: The resolved path corresponds to a directory,
+  which is not a supported target for module imports.
 
-**ESM_RESOLVE**(_specifier_, _parentURL_, _isMain_)
+### Resolver Algorithm Specification
 
-> 1. Let _resolvedURL_ be **undefined**.
+**ESM_RESOLVE**(_specifier_, _parentURL_)
+
+> 1. Let _resolved_ be **undefined**.
 > 1. If _specifier_ is a valid URL, then
->    1. Set _resolvedURL_ to the result of parsing and reserializing
+>    1. Set _resolved_ to the result of parsing and reserializing
 >       _specifier_ as a URL.
-> 1. Otherwise, if _specifier_ starts with _"/"_, then
->    1. Throw an _Invalid Specifier_ error.
-> 1. Otherwise, if _specifier_ starts with _"./"_ or _"../"_, then
->    1. Set _resolvedURL_ to the URL resolution of _specifier_ relative to
+> 1. Otherwise, if _specifier_ starts with _"/"_, _"./"_ or _"../"_, then
+>    1. Set _resolved_ to the URL resolution of _specifier_ relative to
 >       _parentURL_.
+> 1. Otherwise, if _specifier_ starts with _"#"_, then
+>    1. Set _resolved_ to the result of **PACKAGE_IMPORTS_RESOLVE**(_specifier_,
+>       _parentURL_, _defaultConditions_).
 > 1. Otherwise,
 >    1. Note: _specifier_ is now a bare specifier.
->    1. Set _resolvedURL_ the result of
+>    1. Set _resolved_ the result of
 >       **PACKAGE_RESOLVE**(_specifier_, _parentURL_).
-> 1. If _resolvedURL_ contains any percent encodings of _"/"_ or _"\\"_ (_"%2f"_
+> 1. If _resolved_ contains any percent encodings of _"/"_ or _"\\"_ (_"%2f"_
 >    and _"%5C"_ respectively), then
->    1. Throw an _Invalid Specifier_ error.
-> 1. If the file at _resolvedURL_ does not exist, then
+>    1. Throw an _Invalid Module Specifier_ error.
+> 1. If the file at _resolved_ is a directory, then
+>    1. Throw an _Unsupported Directory Import_ error.
+> 1. If the file at _resolved_ does not exist, then
 >    1. Throw a _Module Not Found_ error.
-> 1. Set _resolvedURL_ to the real path of _resolvedURL_.
-> 1. Let _format_ be the result of **ESM_FORMAT**(_resolvedURL_, _isMain_).
-> 1. Load _resolvedURL_ as module format, _format_.
+> 1. Set _resolved_ to the real path of _resolved_.
+> 1. Let _format_ be the result of **ESM_FORMAT**(_resolved_).
+> 1. Load _resolved_ as module format, _format_.
+> 1. Return _resolved_.
 
 **PACKAGE_RESOLVE**(_packageSpecifier_, _parentURL_)
 
-> 1. Let _packageName_ be *undefined*.
-> 1. Let _packageSubpath_ be *undefined*.
+> 1. Let _packageName_ be **undefined**.
 > 1. If _packageSpecifier_ is an empty string, then
->    1. Throw an _Invalid Specifier_ error.
+>    1. Throw an _Invalid Module Specifier_ error.
 > 1. If _packageSpecifier_ does not start with _"@"_, then
->    1. Set _packageName_ to the substring of _packageSpecifier_ until the
->       first _"/"_ separator or the end of the string.
+>    1. Set _packageName_ to the substring of _packageSpecifier_ until the first
+>       _"/"_ separator or the end of the string.
 > 1. Otherwise,
 >    1. If _packageSpecifier_ does not contain a _"/"_ separator, then
->       1. Throw an _Invalid Specifier_ error.
+>       1. Throw an _Invalid Module Specifier_ error.
 >    1. Set _packageName_ to the substring of _packageSpecifier_
 >       until the second _"/"_ separator or the end of the string.
 > 1. If _packageName_ starts with _"."_ or contains _"\\"_ or _"%"_, then
->    1. Throw an _Invalid Specifier_ error.
-> 1. Let _packageSubpath_ be _undefined_.
-> 1. If the length of _packageSpecifier_ is greater than the length of
->    _packageName_, then
->    1. Set _packageSubpath_ to _"."_ concatenated with the substring of
->       _packageSpecifier_ from the position at the length of _packageName_.
-> 1. If _packageSubpath_ contains any _"."_ or _".."_ segments or percent
->    encoded strings for _"/"_ or _"\\"_ then,
->    1. Throw an _Invalid Specifier_ error.
-> 1. If _packageSubpath_ is _undefined_ and _packageName_ is a Node.js builtin
+>    1. Throw an _Invalid Module Specifier_ error.
+> 1. Let _packageSubpath_ be _"."_ concatenated with the substring of
+>    _packageSpecifier_ from the position at the length of _packageName_.
+> 1. If _packageSubpath_ ends in _"/"_, then
+>    1. Throw an _Invalid Module Specifier_ error.
+> 1. Let _selfUrl_ be the result of
+>    **PACKAGE_SELF_RESOLVE**(_packageName_, _packageSubpath_, _parentURL_).
+> 1. If _selfUrl_ is not **undefined**, return _selfUrl_.
+> 1. If _packageSubpath_ is _"."_ and _packageName_ is a Node.js builtin
 >    module, then
 >    1. Return the string _"node:"_ concatenated with _packageSpecifier_.
 > 1. While _parentURL_ is not the file system root,
@@ -865,92 +1120,170 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 >       concatenated with _packageSpecifier_, relative to _parentURL_.
 >    1. Set _parentURL_ to the parent folder URL of _parentURL_.
 >    1. If the folder at _packageURL_ does not exist, then
->       1. Set _parentURL_ to the parent URL path of _parentURL_.
 >       1. Continue the next loop iteration.
 >    1. Let _pjson_ be the result of **READ_PACKAGE_JSON**(_packageURL_).
->    1. If _packageSubpath_ is _undefined__, then
->       1. Return the result of **PACKAGE_MAIN_RESOLVE**(_packageURL_,
->          _pjson_).
+>    1. If _pjson_ is not **null** and _pjson_._exports_ is not **null** or
+>       **undefined**, then
+>       1. Return the result of **PACKAGE_EXPORTS_RESOLVE**(_packageURL_,
+>          _packageSubpath_, _pjson.exports_, _defaultConditions_).
+>    1. Otherwise, if _packageSubpath_ is equal to _"."_, then
+>       1. If _pjson.main_ is a string, then
+>          1. Return the URL resolution of _main_ in _packageURL_.
 >    1. Otherwise,
->       1. If _pjson_ is not **null** and _pjson_ has an _"exports"_ key, then
->          1. Let _exports_ be _pjson.exports_.
->          1. If _exports_ is not **null** or **undefined**, then
->             1. Return **PACKAGE_EXPORTS_RESOLVE**(_packageURL_,
->                _packageSubpath_, _pjson.exports_).
 >       1. Return the URL resolution of _packageSubpath_ in _packageURL_.
 > 1. Throw a _Module Not Found_ error.
 
-**PACKAGE_MAIN_RESOLVE**(_packageURL_, _pjson_)
+**PACKAGE_SELF_RESOLVE**(_packageName_, _packageSubpath_, _parentURL_)
 
-> 1. If _pjson_ is **null**, then
->    1. Throw a _Module Not Found_ error.
-> 1. If _pjson.exports_ is not **null** or **undefined**, then
->    1. If _pjson.exports_ is a String or Array, then
->       1. Return _PACKAGE_EXPORTS_TARGET_RESOLVE(packageURL, pjson.exports,
->          "")_.
->    1. If _pjson.exports is an Object, then
->       1. If _pjson.exports_ contains a _"."_ property, then
->          1. Let _mainExport_ be the _"."_ property in _pjson.exports_.
->          1. Return _PACKAGE_EXPORTS_TARGET_RESOLVE(packageURL, mainExport,
->             "")_.
-> 1. If _pjson.main_ is a String, then
->    1. Let _resolvedMain_ be the URL resolution of _packageURL_, "/", and
->       _pjson.main_.
->    1. If the file at _resolvedMain_ exists, then
->       1. Return _resolvedMain_.
-> 1. If _pjson.type_ is equal to _"module"_, then
->    1. Throw a _Module Not Found_ error.
-> 1. Let _legacyMainURL_ be the result applying the legacy
->    **LOAD_AS_DIRECTORY** CommonJS resolver to _packageURL_, throwing a
->    _Module Not Found_ error for no resolution.
-> 1. Return _legacyMainURL_.
+> 1. Let _packageURL_ be the result of **READ_PACKAGE_SCOPE**(_parentURL_).
+> 1. If _packageURL_ is **null**, then
+>    1. Return **undefined**.
+> 1. Let _pjson_ be the result of **READ_PACKAGE_JSON**(_packageURL_).
+> 1. If _pjson_ is **null** or if _pjson_._exports_ is **null** or
+>    **undefined**, then
+>    1. Return **undefined**.
+> 1. If _pjson.name_ is equal to _packageName_, then
+>    1. Return the result of **PACKAGE_EXPORTS_RESOLVE**(_packageURL_,
+>       _packageSubpath_, _pjson.exports_, _defaultConditions_).
+> 1. Otherwise, return **undefined**.
 
-**PACKAGE_EXPORTS_RESOLVE**(_packageURL_, _packagePath_, _exports_)
+**PACKAGE_EXPORTS_RESOLVE**(_packageURL_, _subpath_, _exports_, _conditions_)
 
-> 1. If _exports_ is an Object, then
->    1. Set _packagePath_ to _"./"_ concatenated with _packagePath_.
->    1. If _packagePath_ is a key of _exports_, then
->       1. Let _target_ be the value of _exports\[packagePath\]_.
->       1. Return **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_,
->          _""_).
->    1. Let _directoryKeys_ be the list of keys of _exports_ ending in
->       _"/"_, sorted by length descending.
->    1. For each key _directory_ in _directoryKeys_, do
->       1. If _packagePath_ starts with _directory_, then
->          1. Let _target_ be the value of _exports\[directory\]_.
->          1. Let _subpath_ be the substring of _target_ starting at the index
->             of the length of _directory_.
->          1. Return **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_,
->             _subpath_).
-> 1. Throw a _Module Not Found_ error.
+> 1. If _exports_ is an Object with both a key starting with _"."_ and a key not
+>    starting with _"."_, throw an _Invalid Package Configuration_ error.
+> 1. If _subpath_ is equal to _"."_, then
+>    1. Let _mainExport_ be **undefined**.
+>    1. If _exports_ is a String or Array, or an Object containing no keys
+>       starting with _"."_, then
+>       1. Set _mainExport_ to _exports_.
+>    1. Otherwise if _exports_ is an Object containing a _"."_ property, then
+>       1. Set _mainExport_ to _exports_\[_"."_\].
+>    1. If _mainExport_ is not **undefined**, then
+>       1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
+>          _packageURL_, _mainExport_, _""_, **false**, **false**,
+>          _conditions_).
+>       1. If _resolved_ is not **null** or **undefined**, return _resolved_.
+> 1. Otherwise, if _exports_ is an Object and all keys of _exports_ start with
+>    _"."_, then
+>    1. Let _matchKey_ be the string _"./"_ concatenated with _subpath_.
+>    1. Let _resolved_ be the result of **PACKAGE_IMPORTS_EXPORTS_RESOLVE**(
+>       _matchKey_, _exports_, _packageURL_, **false**, _conditions_).
+>    1. If _resolved_ is not **null** or **undefined**, return _resolved_.
+> 1. Throw a _Package Path Not Exported_ error.
 
-**PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _target_, _subpath_)
+**PACKAGE_IMPORTS_RESOLVE**(_specifier_, _parentURL_, _conditions_)
+
+> 1. Assert: _specifier_ begins with _"#"_.
+> 1. If _specifier_ is exactly equal to _"#"_ or starts with _"#/"_, then
+>    1. Throw an _Invalid Module Specifier_ error.
+> 1. Let _packageURL_ be the result of **READ_PACKAGE_SCOPE**(_parentURL_).
+> 1. If _packageURL_ is not **null**, then
+>    1. Let _pjson_ be the result of **READ_PACKAGE_JSON**(_packageURL_).
+>    1. If _pjson.imports_ is a non-null Object, then
+>       1. Let _resolved_ be the result of **PACKAGE_IMPORTS_EXPORTS_RESOLVE**(
+>          _specifier_, _pjson.imports_, _packageURL_, **true**, _conditions_).
+>       1. If _resolved_ is not **null** or **undefined**, return _resolved_.
+> 1. Throw a _Package Import Not Defined_ error.
+
+**PACKAGE_IMPORTS_EXPORTS_RESOLVE**(_matchKey_, _matchObj_, _packageURL_,
+_isImports_, _conditions_)
+
+> 1. If _matchKey_ is a key of _matchObj_ and does not contain _"*"_, then
+>    1. Let _target_ be the value of _matchObj_\[_matchKey_\].
+>    1. Return the result of **PACKAGE_TARGET_RESOLVE**(_packageURL_, _target_,
+>       _""_, **false**, _isImports_, _conditions_).
+> 1. Let _expansionKeys_ be the list of keys of _matchObj_ containing only a
+>    single _"*"_, sorted by the sorting function **PATTERN_KEY_COMPARE** which
+>    orders in descending order of specificity.
+> 1. For each key _expansionKey_ in _expansionKeys_, do
+>    1. Let _patternBase_ be the substring of _expansionKey_ up to but excluding
+>       the first _"*"_ character.
+>    1. If _matchKey_ starts with but is not equal to _patternBase_, then
+>       1. Let _patternTrailer_ be the substring of _expansionKey_ from the
+>          index after the first _"*"_ character.
+>       1. If _patternTrailer_ has zero length, or if _matchKey_ ends with
+>          _patternTrailer_ and the length of _matchKey_ is greater than or
+>          equal to the length of _expansionKey_, then
+>          1. Let _target_ be the value of _matchObj_\[_expansionKey_\].
+>          1. Let _subpath_ be the substring of _matchKey_ starting at the
+>             index of the length of _patternBase_ up to the length of
+>             _matchKey_ minus the length of _patternTrailer_.
+>          1. Return the result of **PACKAGE_TARGET_RESOLVE**(_packageURL_,
+>             _target_, _subpath_, **true**, _isImports_, _conditions_).
+> 1. Return **null**.
+
+**PATTERN_KEY_COMPARE**(_keyA_, _keyB_)
+
+> 1. Assert: _keyA_ ends with _"/"_ or contains only a single _"*"_.
+> 1. Assert: _keyB_ ends with _"/"_ or contains only a single _"*"_.
+> 1. Let _baseLengthA_ be the index of _"*"_ in _keyA_ plus one, if _keyA_
+>    contains _"*"_, or the length of _keyA_ otherwise.
+> 1. Let _baseLengthB_ be the index of _"*"_ in _keyB_ plus one, if _keyB_
+>    contains _"*"_, or the length of _keyB_ otherwise.
+> 1. If _baseLengthA_ is greater than _baseLengthB_, return -1.
+> 1. If _baseLengthB_ is greater than _baseLengthA_, return 1.
+> 1. If _keyA_ does not contain _"*"_, return 1.
+> 1. If _keyB_ does not contain _"*"_, return -1.
+> 1. If the length of _keyA_ is greater than the length of _keyB_, return -1.
+> 1. If the length of _keyB_ is greater than the length of _keyA_, return 1.
+> 1. Return 0.
+
+**PACKAGE_TARGET_RESOLVE**(_packageURL_, _target_, _subpath_, _pattern_,
+_internal_, _conditions_)
 
 > 1. If _target_ is a String, then
->    1. If _target_ does not start with _"./"_, throw a _Module Not Found_
->       error.
->    1. If _subpath_ has non-zero length and _target_ does not end with _"/"_,
->       throw a _Module Not Found_ error.
->    1. If _target_ or _subpath_ contain any _"node_modules"_ segments including
->       _"node_modules"_ percent-encoding, throw a _Module Not Found_ error.
+>    1. If _pattern_ is **false**, _subpath_ has non-zero length and _target_
+>       does not end with _"/"_, throw an _Invalid Module Specifier_ error.
+>    1. If _target_ does not start with _"./"_, then
+>       1. If _internal_ is **true** and _target_ does not start with _"../"_ or
+>          _"/"_ and is not a valid URL, then
+>          1. If _pattern_ is **true**, then
+>             1. Return **PACKAGE_RESOLVE**(_target_ with every instance of
+>                _"*"_ replaced by _subpath_, _packageURL_ + _"/"_)_.
+>          1. Return **PACKAGE_RESOLVE**(_target_ + _subpath_,
+>             _packageURL_ + _"/"_)_.
+>       1. Otherwise, throw an _Invalid Package Target_ error.
+>    1. If _target_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_ or
+>       _"node_modules"_ segments after the first segment, throw an
+>       _Invalid Package Target_ error.
 >    1. Let _resolvedTarget_ be the URL resolution of the concatenation of
 >       _packageURL_ and _target_.
->    1. If _resolvedTarget_ is contained in _packageURL_, then
->       1. Let _resolved_ be the URL resolution of the concatenation of
->          _subpath_ and _resolvedTarget_.
->       1. If _resolved_ is contained in _resolvedTarget_, then
+>    1. Assert: _resolvedTarget_ is contained in _packageURL_.
+>    1. If _subpath_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_ or
+>       _"node_modules"_ segments, throw an _Invalid Module Specifier_ error.
+>    1. If _pattern_ is **true**, then
+>       1. Return the URL resolution of _resolvedTarget_ with every instance of
+>          _"*"_ replaced with _subpath_.
+>    1. Otherwise,
+>       1. Return the URL resolution of the concatenation of _subpath_ and
+>          _resolvedTarget_.
+> 1. Otherwise, if _target_ is a non-null Object, then
+>    1. If _exports_ contains any index property keys, as defined in ECMA-262
+>       [6.1.7 Array Index][], throw an _Invalid Package Configuration_ error.
+>    1. For each property _p_ of _target_, in object insertion order as,
+>       1. If _p_ equals _"default"_ or _conditions_ contains an entry for _p_,
+>          then
+>          1. Let _targetValue_ be the value of the _p_ property in _target_.
+>          1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
+>             _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>             _conditions_).
+>          1. If _resolved_ is equal to **undefined**, continue the loop.
 >          1. Return _resolved_.
+>    1. Return **undefined**.
 > 1. Otherwise, if _target_ is an Array, then
+>    1. If _target.length is zero, return **null**.
 >    1. For each item _targetValue_ in _target_, do
->       1. If _targetValue_ is not a String, continue the loop.
->       1. Let _resolved_ be the result of
->          **PACKAGE_EXPORTS_TARGET_RESOLVE**(_packageURL_, _targetValue_,
->          _subpath_), continuing the loop on abrupt completion.
->       1. Assert: _resolved_ is a String.
+>       1. Let _resolved_ be the result of **PACKAGE_TARGET_RESOLVE**(
+>          _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>          _conditions_), continuing the loop on any _Invalid Package Target_
+>          error.
+>       1. If _resolved_ is **undefined**, continue the loop.
 >       1. Return _resolved_.
-> 1. Throw a _Module Not Found_ error.
+>    1. Return or throw the last fallback resolution **null** return or error.
+> 1. Otherwise, if _target_ is _null_, return **null**.
+> 1. Otherwise throw an _Invalid Package Target_ error.
 
-**ESM_FORMAT**(_url_, _isMain_)
+**ESM_FORMAT**(_url_)
 
 > 1. Assert: _url_ corresponds to an existing file.
 > 1. Let _pjson_ be the result of **READ_PACKAGE_SCOPE**(_url_).
@@ -959,24 +1292,21 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 > 1. If _url_ ends in _".cjs"_, then
 >    1. Return _"commonjs"_.
 > 1. If _pjson?.type_ exists and is _"module"_, then
->    1. If _isMain_ is **true** or _url_ ends in _".js"_, then
+>    1. If _url_ ends in _".js"_, then
 >       1. Return _"module"_.
 >    1. Throw an _Unsupported File Extension_ error.
 > 1. Otherwise,
->    1. If _isMain_ is **true** or _url_ ends in _".js"_, _".json"_ or
->       _".node"_, then
->       1. Return _"commonjs"_.
 >    1. Throw an _Unsupported File Extension_ error.
 
 **READ_PACKAGE_SCOPE**(_url_)
 
 > 1. Let _scopeURL_ be _url_.
 > 1. While _scopeURL_ is not the file system root,
+>    1. Set _scopeURL_ to the parent URL of _scopeURL_.
 >    1. If _scopeURL_ ends in a _"node_modules"_ path segment, return **null**.
 >    1. Let _pjson_ be the result of **READ_PACKAGE_JSON**(_scopeURL_).
 >    1. If _pjson_ is not **null**, then
 >       1. Return _pjson_.
->    1. Set _scopeURL_ to the parent URL of _scopeURL_.
 > 1. Return **null**.
 
 **READ_PACKAGE_JSON**(_packageURL_)
@@ -988,44 +1318,64 @@ _isMain_ is **true** when resolving the Node.js application entry point.
 >    1. Throw an _Invalid Package Configuration_ error.
 > 1. Return the parsed JSON source of the file at _pjsonURL_.
 
-</details>
-
 ### Customizing ESM specifier resolution algorithm
+
+> Stability: 1 - Experimental
 
 The current specifier resolution does not support all default behavior of
 the CommonJS loader. One of the behavior differences is automatic resolution
 of file extensions and the ability to import directories that have an index
 file.
 
-The `--es-module-specifier-resolution=[mode]` flag can be used to customize
+The `--experimental-specifier-resolution=[mode]` flag can be used to customize
 the extension resolution algorithm. The default mode is `explicit`, which
 requires the full path to a module be provided to the loader. To enable the
 automatic extension resolution and importing from directories that include an
 index file use the `node` mode.
 
-```bash
-$ node --experimental-modules index.mjs
+```console
+$ node index.mjs
 success!
-$ node --experimental-modules index #Failure!
+$ node index # Failure!
 Error: Cannot find module
-$ node --experimental-modules --es-module-specifier-resolution=node index
+$ node --experimental-specifier-resolution=node index
 success!
 ```
 
-[CommonJS]: modules.html
-[ECMAScript-modules implementation]: https://github.com/nodejs/modules/blob/master/doc/plan-for-new-modules-implementation.md
+<!-- Note: The cjs-module-lexer link should be kept in-sync with the deps version -->
+[6.1.7 Array Index]: https://tc39.es/ecma262/#integer-index
+[CommonJS]: modules.md
+[Conditional exports]: packages.md#conditional-exports
+[Core modules]: modules.md#core-modules
+[Dynamic `import()`]: https://wiki.developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#Dynamic_Imports
+[ECMAScript Top-Level `await` proposal]: https://github.com/tc39/proposal-top-level-await/
 [ES Module Integration Proposal for Web Assembly]: https://github.com/webassembly/esm-integration
-[Node.js EP for ES Modules]: https://github.com/nodejs/node-eps/blob/master/002-es-modules.md
-[Terminology]: #esm_terminology
+[Node.js Module Resolution Algorithm]: #resolver-algorithm-specification
+[Terminology]: #terminology
+[URL]: https://url.spec.whatwg.org/
 [WHATWG JSON modules specification]: https://html.spec.whatwg.org/#creating-a-json-module-script
+[`"exports"`]: packages.md#exports
+[`"type"`]: packages.md#type
+[`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+[`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
+[`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
+[`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [`data:` URLs]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
 [`export`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
-[`import()`]: #esm_import-expressions
-[`import.meta.url`]: #esm_import_meta
+[`import()`]: #import-expressions
+[`import.meta.resolve`]: #importmetaresolvespecifier-parent
+[`import.meta.url`]: #importmetaurl
 [`import`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import
-[`module.createRequire()`]: modules.html#modules_module_createrequire_filename
-[`module.syncBuiltinESMExports()`]: modules.html#modules_module_syncbuiltinesmexports
-[dynamic instantiate hook]: #esm_dynamic_instantiate_hook
-[package exports]: #esm_package_exports
+[`module.createRequire()`]: module.md#modulecreaterequirefilename
+[`module.syncBuiltinESMExports()`]: module.md#modulesyncbuiltinesmexports
+[`package.json`]: packages.md#nodejs-packagejson-field-definitions
+[`process.dlopen`]: process.md#processdlopenmodule-filename-flags
+[`string`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
+[`util.TextDecoder`]: util.md#class-utiltextdecoder
+[cjs-module-lexer]: https://github.com/guybedford/cjs-module-lexer/tree/1.2.2
+[custom https loader]: #https-loader
+[load hook]: #loadurl-context-defaultload
+[resolve hook]: #resolvespecifier-context-defaultresolve
 [special scheme]: https://url.spec.whatwg.org/#special-scheme
 [the official standard format]: https://tc39.github.io/ecma262/#sec-modules
+[url.pathToFileURL]: url.md#urlpathtofileurlpath

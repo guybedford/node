@@ -44,8 +44,9 @@ testMe._domain.on('error', function(reason) {
 });
 
 const testFile = [
-  'var top = function() {',
-  'var inner = {one:1};'
+  'let inner = (function() {',
+  '  return {one:1};',
+  '})()',
 ];
 const saveFileName = join(tmpdir.path, 'test.save.js');
 
@@ -60,8 +61,7 @@ assert.strictEqual(fs.readFileSync(saveFileName, 'utf8'),
                    testFile.join('\n'));
 
 // Make sure that the REPL data is "correct".
-testMe.complete('inner.o', common.mustCall(function(error, data) {
-  assert.ifError(error);
+testMe.complete('inner.o', common.mustSucceed((data) => {
   assert.deepStrictEqual(data, works);
 }));
 
@@ -72,8 +72,7 @@ putIn.run(['.clear']);
 putIn.run([`.load ${saveFileName}`]);
 
 // Make sure that the REPL data is "correct".
-testMe.complete('inner.o', common.mustCall(function(error, data) {
-  assert.ifError(error);
+testMe.complete('inner.o', common.mustSucceed((data) => {
   assert.deepStrictEqual(data, works);
 }));
 
@@ -122,7 +121,7 @@ putIn.run([`.save ${invalidFileName}`]);
   const cmds = [
     'function testSave() {',
     'return "saved";',
-    '}'
+    '}',
   ];
   const putIn = new ArrayStream();
   const replServer = repl.start({ terminal: true, stream: putIn });

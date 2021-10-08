@@ -17,16 +17,16 @@ fs.mkdirSync(tmpPath);
 
 const test = (shell) => {
   cp.exec('echo foo bar', { shell: shell },
-          common.mustCall((error, stdout, stderror) => {
-            assert.ok(!error && !stderror);
+          common.mustSucceed((stdout, stderror) => {
+            assert.ok(!stderror);
             assert.ok(stdout.includes('foo') && stdout.includes('bar'));
           }));
 };
 const testCopy = (shellName, shellPath) => {
-  // Copy the executable to a path with spaces, to ensure there are no issues
+  // Symlink the executable to a path with spaces, to ensure there are no issues
   // related to quoting of argv0
   const copyPath = `${tmpPath}\\${shellName}`;
-  fs.copyFileSync(shellPath, copyPath);
+  fs.symlinkSync(shellPath, copyPath);
   test(copyPath);
 };
 
@@ -43,12 +43,11 @@ test('CMD');
 test('powershell');
 testCopy('powershell.exe',
          `${system32}\\WindowsPowerShell\\v1.0\\powershell.exe`);
-fs.writeFile(`${tmpPath}\\test file`, 'Test', common.mustCall((err) => {
-  assert.ifError(err);
+fs.writeFile(`${tmpPath}\\test file`, 'Test', common.mustSucceed(() => {
   cp.exec(`Get-ChildItem "${tmpPath}" | Select-Object -Property Name`,
           { shell: 'PowerShell' },
-          common.mustCall((error, stdout, stderror) => {
-            assert.ok(!error && !stderror);
+          common.mustSucceed((stdout, stderror) => {
+            assert.ok(!stderror);
             assert.ok(stdout.includes(
               'test file'));
           }));

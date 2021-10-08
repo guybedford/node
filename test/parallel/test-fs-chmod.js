@@ -80,9 +80,7 @@ const file2 = path.join(tmpdir.path, 'a1.js');
 // Create file1.
 fs.closeSync(fs.openSync(file1, 'w'));
 
-fs.chmod(file1, mode_async.toString(8), common.mustCall((err) => {
-  assert.ifError(err);
-
+fs.chmod(file1, mode_async.toString(8), common.mustSucceed(() => {
   if (common.isWindows) {
     assert.ok((fs.statSync(file1).mode & 0o777) & mode_async);
   } else {
@@ -97,25 +95,18 @@ fs.chmod(file1, mode_async.toString(8), common.mustCall((err) => {
   }
 }));
 
-fs.open(file2, 'w', common.mustCall((err, fd) => {
-  assert.ifError(err);
-
-  fs.fchmod(fd, mode_async.toString(8), common.mustCall((err) => {
-    assert.ifError(err);
-
+fs.open(file2, 'w', common.mustSucceed((fd) => {
+  fs.fchmod(fd, mode_async.toString(8), common.mustSucceed(() => {
     if (common.isWindows) {
       assert.ok((fs.fstatSync(fd).mode & 0o777) & mode_async);
     } else {
       assert.strictEqual(fs.fstatSync(fd).mode & 0o777, mode_async);
     }
 
-    common.expectsError(
+    assert.throws(
       () => fs.fchmod(fd, {}),
       {
-        code: 'ERR_INVALID_ARG_VALUE',
-        type: TypeError,
-        message: 'The argument \'mode\' must be a 32-bit unsigned integer ' +
-                 'or an octal string. Received {}'
+        code: 'ERR_INVALID_ARG_TYPE',
       }
     );
 
@@ -136,9 +127,7 @@ if (fs.lchmod) {
 
   fs.symlinkSync(file2, link);
 
-  fs.lchmod(link, mode_async, common.mustCall((err) => {
-    assert.ifError(err);
-
+  fs.lchmod(link, mode_async, common.mustSucceed(() => {
     assert.strictEqual(fs.lstatSync(link).mode & 0o777, mode_async);
 
     fs.lchmodSync(link, mode_sync);
@@ -151,8 +140,9 @@ if (fs.lchmod) {
   const errObj = {
     code: 'ERR_INVALID_ARG_TYPE',
     name: 'TypeError',
-    message: 'The "path" argument must be one of type string, Buffer, or URL.' +
-             ` Received type ${typeof input}`
+    message: 'The "path" argument must be of type string or an instance ' +
+             'of Buffer or URL.' +
+             common.invalidArgTypeHelper(input)
   };
   assert.throws(() => fs.chmod(input, 1, common.mustNotCall()), errObj);
   assert.throws(() => fs.chmodSync(input, 1), errObj);

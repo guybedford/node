@@ -45,7 +45,7 @@ for (const [type, expect] of [
   ['Buffer', expectBuf],
   ...common.getBufferSources(expectBuf).map((obj) =>
     [obj[Symbol.toStringTag], obj]
-  )
+  ),
 ]) {
   for (const method of [
     ['gzip', 'gunzip', 'Gzip', 'Gunzip'],
@@ -122,12 +122,12 @@ for (const [type, expect] of [
   }
 }
 
-common.expectsError(
+assert.throws(
   () => zlib.gzip('abc'),
   {
     code: 'ERR_INVALID_ARG_TYPE',
-    type: TypeError,
+    name: 'TypeError',
     message: 'The "callback" argument must be of type function. ' +
-             'Received type undefined'
+             'Received undefined'
   }
 );

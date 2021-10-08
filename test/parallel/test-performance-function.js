@@ -4,9 +4,14 @@ const common = require('../common');
 const assert = require('assert');
 
 const {
+  createHistogram,
   performance,
   PerformanceObserver
 } = require('perf_hooks');
+
+const {
+  setTimeout: sleep
+} = require('timers/promises');
 
 {
   // Intentional non-op. Do not wrap in common.mustCall();
@@ -61,13 +66,12 @@ const {
 
 {
   [1, {}, [], null, undefined, Infinity].forEach((input) => {
-    common.expectsError(() => performance.timerify(input),
-                        {
-                          code: 'ERR_INVALID_ARG_TYPE',
-                          type: TypeError,
-                          message: 'The "fn" argument must be of type ' +
-                                   `Function. Received type ${typeof input}`
-                        });
+    assert.throws(() => performance.timerify(input),
+                  {
+                    code: 'ERR_INVALID_ARG_TYPE',
+                    name: 'TypeError',
+                    message: /The "fn" argument must be of type function/
+                  });
   });
 }
 
@@ -82,3 +86,38 @@ const {
   assert.strictEqual(n.length, m.length);
   assert.strictEqual(n.name, 'timerified m');
 }
+
+(async () => {
+  const histogram = createHistogram();
+  const m = (a, b = 1) => {};
+  const n = performance.timerify(m, { histogram });
+  assert.strictEqual(histogram.max, 0);
+  for (let i = 0; i < 10; i++) {
+    n();
+    await sleep(10);
+  }
+  assert.notStrictEqual(histogram.max, 0);
+  [1, '', {}, [], false].forEach((histogram) => {
+    assert.throws(() => performance.timerify(m, { histogram }), {
+      code: 'ERR_INVALID_ARG_TYPE'
+    });
+  });
+})().then(common.mustCall());
+
+(async () => {
+  const histogram = createHistogram();
+  const m = async (a, b = 1) => {
+    await sleep(10);
+  };
+  const n = performance.timerify(m, { histogram });
+  assert.strictEqual(histogram.max, 0);
+  for (let i = 0; i < 10; i++) {
+    await n();
+  }
+  assert.notStrictEqual(histogram.max, 0);
+  [1, '', {}, [], false].forEach((histogram) => {
+    assert.throws(() => performance.timerify(m, { histogram }), {
+      code: 'ERR_INVALID_ARG_TYPE'
+    });
+  });
+})().then(common.mustCall());

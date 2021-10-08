@@ -1,4 +1,3 @@
-/* eslint-disable node-core/require-common-first, node-core/required-modules */
 'use strict';
 
 const path = require('path');
@@ -20,9 +19,14 @@ function readFixtureKey(name, enc) {
   return fs.readFileSync(fixturesPath('keys', name), enc);
 }
 
+function readFixtureKeys(enc, ...names) {
+  return names.map((name) => readFixtureKey(name, enc));
+}
+
 module.exports = {
   fixturesDir,
   path: fixturesPath,
   readSync: readFixtureSync,
-  readKey: readFixtureKey
+  readKey: readFixtureKey,
+  readKeys: readFixtureKeys,
 };

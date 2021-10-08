@@ -7,15 +7,12 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 
-let mode;
-
 if (common.isWindows) {
   common.skip('mode is not supported in mkdir on Windows');
   return;
-} else {
-  mode = 0o644;
 }
 
+const mode = 0o644;
 const maskToIgnore = 0o10000;
 
 const tmpdir = require('../common/tmpdir');
@@ -34,8 +31,7 @@ function test(mode, asString) {
 
   {
     const dir = path.join(tmpdir.path, `mkdir-${suffix}`);
-    fs.mkdir(dir, input, common.mustCall((err) => {
-      assert.ifError(err);
+    fs.mkdir(dir, input, common.mustSucceed(() => {
       assert.strictEqual(fs.statSync(dir).mode & 0o777, mode);
     }));
   }

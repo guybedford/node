@@ -56,12 +56,11 @@ const net = require('net');
 
         for (let i = 1; i < iter; i++) {
           client.write('a');
-          assert.strictEqual(client.bufferSize, i + 1);
+          assert.strictEqual(client.bufferSize, i);
         }
 
-        // It seems that tlsSockets created from sockets of `Duplex` emit no
-        // "finish" events. We use "end" event instead.
-        client.on('end', common.mustCall(() => {
+        client.on('end', common.mustCall());
+        client.on('close', common.mustCall(() => {
           assert.strictEqual(client.bufferSize, undefined);
         }));
 

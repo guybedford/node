@@ -3,20 +3,42 @@
 const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
+const assert = require('assert');
 const http2 = require('http2');
 
 const server = http2.createServer();
 
 server.on('stream', common.mustCall((stream) => {
-  common.expectsError(
+  assert.throws(
     () => stream.close('string'),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError,
+      name: 'TypeError',
       message: 'The "code" argument must be of type number. ' +
-               'Received type string'
+               "Received type string ('string')"
     }
   );
+  assert.throws(
+    () => stream.close(1.01),
+    {
+      code: 'ERR_OUT_OF_RANGE',
+      name: 'RangeError',
+      message: 'The value of "code" is out of range. It must be an integer. ' +
+               'Received 1.01'
+    }
+  );
+  [-1, 2 ** 32].forEach((code) => {
+    assert.throws(
+      () => stream.close(code),
+      {
+        code: 'ERR_OUT_OF_RANGE',
+        name: 'RangeError',
+        message: 'The value of "code" is out of range. ' +
+                 'It must be >= 0 && <= 4294967295. ' +
+                 `Received ${code}`
+      }
+    );
+  });
   stream.respond();
   stream.end('ok');
 }));

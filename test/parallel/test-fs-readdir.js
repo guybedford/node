@@ -21,8 +21,7 @@ files.forEach(function(currentFile) {
 assert.deepStrictEqual(files, fs.readdirSync(readdirDir).sort());
 
 // Check the readdir async version
-fs.readdir(readdirDir, common.mustCall(function(err, f) {
-  assert.ifError(err);
+fs.readdir(readdirDir, common.mustSucceed((f) => {
   assert.deepStrictEqual(files, f.sort());
 }));
 
@@ -37,18 +36,18 @@ fs.readdir(__filename, common.mustCall(function(e) {
 }));
 
 [false, 1, [], {}, null, undefined].forEach((i) => {
-  common.expectsError(
+  assert.throws(
     () => fs.readdir(i, common.mustNotCall()),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
-  common.expectsError(
+  assert.throws(
     () => fs.readdirSync(i),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      type: TypeError
+      name: 'TypeError'
     }
   );
 });

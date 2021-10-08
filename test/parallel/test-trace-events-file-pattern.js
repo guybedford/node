@@ -9,14 +9,14 @@ const path = require('path');
 tmpdir.refresh();
 
 const CODE =
-  'setTimeout(() => { for (var i = 0; i < 100000; i++) { "test" + i } }, 1)';
+  'setTimeout(() => { for (let i = 0; i < 100000; i++) { "test" + i } }, 1)';
 
 const proc = cp.spawn(process.execPath, [
   '--trace-events-enabled',
   '--trace-event-file-pattern',
   // eslint-disable-next-line no-template-curly-in-string
   '${pid}-${rotation}-${pid}-${rotation}.tracing.log',
-  '-e', CODE
+  '-e', CODE,
 ], { cwd: tmpdir.path });
 
 proc.once('exit', common.mustCall(() => {

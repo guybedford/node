@@ -11,7 +11,7 @@ const Countdown = require('../common/countdown');
 
 const errors = [
   'test-error',
-  Error('test')
+  Error('test'),
 ];
 let nextError;
 
@@ -56,13 +56,13 @@ server.listen(0, common.mustCall(() => {
     req.on('response', common.mustNotCall());
     req.on('error', common.expectsError({
       code: 'ERR_HTTP2_STREAM_ERROR',
-      type: Error,
+      name: 'Error',
       message: 'Stream closed with error code NGHTTP2_INTERNAL_ERROR'
     }));
     req.on('close', common.mustCall(() => countdown.dec()));
 
     req.resume();
-    req.on('end', common.mustCall());
+    req.on('end', common.mustNotCall());
   }
 
   {
@@ -71,12 +71,12 @@ server.listen(0, common.mustCall(() => {
     req.on('response', common.mustNotCall());
     req.on('error', common.expectsError({
       code: 'ERR_HTTP2_STREAM_ERROR',
-      type: Error,
+      name: 'Error',
       message: 'Stream closed with error code NGHTTP2_INTERNAL_ERROR'
     }));
     req.on('close', common.mustCall(() => countdown.dec()));
 
     req.resume();
-    req.on('end', common.mustCall());
+    req.on('end', common.mustNotCall());
   }
 }));

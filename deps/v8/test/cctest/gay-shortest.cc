@@ -34,7 +34,7 @@
 #include "test/cctest/gay-shortest.h"
 
 namespace v8 {
-namespace internal {
+namespace base {
 
 static const PrecomputedShortest kShortestTestNumbers[] = {
   {1.3252057186783201350530603e-106, "13252057186783201", -105},
@@ -100039,7 +100039,6 @@ static const PrecomputedShortest kShortestTestNumbers[] = {
   {8.1205022656023800444116331e-271, "812050226560238", -270}
 };
 
-
 Vector<const PrecomputedShortest> PrecomputedShortestRepresentations() {
   int number_elements =
       sizeof(kShortestTestNumbers) / sizeof(PrecomputedShortest);
@@ -100047,5 +100046,5 @@ Vector<const PrecomputedShortest> PrecomputedShortestRepresentations() {
                                            number_elements);
 }
 
-}  // namespace internal
+}  // namespace base
 }  // namespace v8

@@ -70,7 +70,7 @@ const expectedPublicModules = new Set([
   'v8',
   'vm',
   'worker_threads',
-  'zlib'
+  'zlib',
 ]);
 
 if (process.argv[2] === 'child') {
@@ -79,7 +79,7 @@ if (process.argv[2] === 'child') {
     const publicModules = new Set();
     for (const id of allBuiltins) {
       if (id.startsWith('internal/')) {
-        common.expectsError(() => {
+        assert.throws(() => {
           require(id);
         }, {
           code: 'MODULE_NOT_FOUND',

@@ -63,31 +63,33 @@ const keySize = 2048;
         key: keyPem,
         padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
       });
-  }, { message: 'bye, bye, error stack' });
+  }, { message: common.hasOpenSSL3 ?
+    'error:1C8000A5:Provider routines::illegal or unsupported padding mode' :
+    'bye, bye, error stack' });
 
   delete Object.prototype.opensslErrorStack;
 }
 
-common.expectsError(
+assert.throws(
   () => crypto.createVerify('SHA256').verify({
     key: certPem,
     padding: null,
   }, ''),
   {
-    code: 'ERR_INVALID_OPT_VALUE',
-    type: TypeError,
-    message: 'The value "null" is invalid for option "padding"'
+    code: 'ERR_INVALID_ARG_VALUE',
+    name: 'TypeError',
+    message: "The property 'options.padding' is invalid. Received null",
   });
 
-common.expectsError(
+assert.throws(
   () => crypto.createVerify('SHA256').verify({
     key: certPem,
     saltLength: null,
   }, ''),
   {
-    code: 'ERR_INVALID_OPT_VALUE',
-    type: TypeError,
-    message: 'The value "null" is invalid for option "saltLength"'
+    code: 'ERR_INVALID_ARG_VALUE',
+    name: 'TypeError',
+    message: "The property 'options.saltLength' is invalid. Received null",
   });
 
 // Test signing and verifying
@@ -170,14 +172,14 @@ common.expectsError(
       getEffectiveSaltLength(crypto.constants.RSA_PSS_SALTLEN_DIGEST),
       crypto.constants.RSA_PSS_SALTLEN_MAX_SIGN,
       getEffectiveSaltLength(crypto.constants.RSA_PSS_SALTLEN_MAX_SIGN),
-      0, 16, 32, 64, 128
+      0, 16, 32, 64, 128,
     ];
 
     const verifySaltLengths = [
       crypto.constants.RSA_PSS_SALTLEN_DIGEST,
       getEffectiveSaltLength(crypto.constants.RSA_PSS_SALTLEN_DIGEST),
       getEffectiveSaltLength(crypto.constants.RSA_PSS_SALTLEN_MAX_SIGN),
-      0, 16, 32, 64, 128
+      0, 16, 32, 64, 128,
     ];
     const errMessage = /^Error:.*data too large for key size$/;
 
@@ -306,7 +308,7 @@ common.expectsError(
 {
   [null, NaN, 'boom', {}, [], true, false]
     .forEach((invalidValue) => {
-      common.expectsError(() => {
+      assert.throws(() => {
         crypto.createSign('SHA256')
           .update('Test123')
           .sign({
@@ -314,11 +316,11 @@ common.expectsError(
             padding: invalidValue
           });
       }, {
-        code: 'ERR_INVALID_OPT_VALUE',
-        type: TypeError
+        code: 'ERR_INVALID_ARG_VALUE',
+        name: 'TypeError'
       });
 
-      common.expectsError(() => {
+      assert.throws(() => {
         crypto.createSign('SHA256')
           .update('Test123')
           .sign({
@@ -327,8 +329,8 @@ common.expectsError(
             saltLength: invalidValue
           });
       }, {
-        code: 'ERR_INVALID_OPT_VALUE',
-        type: TypeError
+        code: 'ERR_INVALID_ARG_VALUE',
+        name: 'TypeError'
       });
     });
 
@@ -339,7 +341,10 @@ common.expectsError(
         key: keyPem,
         padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
       });
-  }, {
+  }, common.hasOpenSSL3 ? {
+    code: 'ERR_OSSL_ILLEGAL_OR_UNSUPPORTED_PADDING_MODE',
+    message: /illegal or unsupported padding mode/,
+  } : {
     code: 'ERR_OSSL_RSA_ILLEGAL_OR_UNSUPPORTED_PADDING_MODE',
     message: /illegal or unsupported padding mode/,
     opensslErrorStack: [
@@ -351,11 +356,11 @@ common.expectsError(
 
 // Test throws exception when key options is null
 {
-  common.expectsError(() => {
+  assert.throws(() => {
     crypto.createSign('SHA1').update('Test123').sign(null, 'base64');
   }, {
     code: 'ERR_CRYPTO_SIGN_KEY_REQUIRED',
-    type: Error
+    name: 'Error'
   });
 }
 
@@ -364,18 +369,18 @@ common.expectsError(
   const verify = crypto.createVerify('SHA1');
 
   [1, [], {}, undefined, null, true, Infinity].forEach((input) => {
-    const type = typeof input;
     const errObj = {
       code: 'ERR_INVALID_ARG_TYPE',
       name: 'TypeError',
-      message: 'The "algorithm" argument must be of type string. ' +
-               `Received type ${type}`
+      message: 'The "algorithm" argument must be of type string.' +
+               `${common.invalidArgTypeHelper(input)}`
     };
     assert.throws(() => crypto.createSign(input), errObj);
     assert.throws(() => crypto.createVerify(input), errObj);
 
-    errObj.message = 'The "data" argument must be one of type string, ' +
-                     `Buffer, TypedArray, or DataView. Received type ${type}`;
+    errObj.message = 'The "data" argument must be of type string or an ' +
+                     'instance of Buffer, TypedArray, or DataView.' +
+                     common.invalidArgTypeHelper(input);
     assert.throws(() => sign.update(input), errObj);
     assert.throws(() => verify.update(input), errObj);
     assert.throws(() => sign._write(input, 'utf8', () => {}), errObj);
@@ -383,7 +388,7 @@ common.expectsError(
   });
 
   [
-    Uint8Array, Uint16Array, Uint32Array, Float32Array, Float64Array
+    Uint8Array, Uint16Array, Uint32Array, Float32Array, Float64Array,
   ].forEach((clazz) => {
     // These should all just work
     sign.update(new clazz());
@@ -391,19 +396,12 @@ common.expectsError(
   });
 
   [1, {}, [], Infinity].forEach((input) => {
-    const type = typeof input;
     const errObj = {
       code: 'ERR_INVALID_ARG_TYPE',
       name: 'TypeError',
-      message: 'The "key" argument must be one of type string, Buffer, ' +
-               `TypedArray, DataView, or KeyObject. Received type ${type}`
     };
-
     assert.throws(() => sign.sign(input), errObj);
     assert.throws(() => verify.verify(input), errObj);
-
-    errObj.message = 'The "signature" argument must be one of type string, ' +
-                     `Buffer, TypedArray, or DataView. Received type ${type}`;
     assert.throws(() => verify.verify('test', input), errObj);
   });
 }
@@ -411,10 +409,10 @@ common.expectsError(
 {
   assert.throws(
     () => crypto.createSign('sha8'),
-    /Unknown message digest/);
+    /Invalid digest/);
   assert.throws(
     () => crypto.sign('sha8', Buffer.alloc(1), keyPem),
-    /Unknown message digest/);
+    /Invalid digest/);
 }
 
 [
@@ -429,7 +427,7 @@ common.expectsError(
   { private: fixtures.readKey('rsa_private_2048.pem', 'ascii'),
     public: fixtures.readKey('rsa_public_2048.pem', 'ascii'),
     algo: 'sha1',
-    sigLen: 256 }
+    sigLen: 256 },
 ].forEach((pair) => {
   const algo = pair.algo;
 
@@ -465,7 +463,7 @@ common.expectsError(
   }
 
   [
-    Uint8Array, Uint16Array, Uint32Array, Float32Array, Float64Array
+    Uint8Array, Uint16Array, Uint32Array, Float32Array, Float64Array,
   ].forEach((clazz) => {
     const data = new clazz();
     const sig = crypto.sign(algo, data, pair.private);
@@ -477,44 +475,124 @@ common.expectsError(
 [1, {}, [], true, Infinity].forEach((input) => {
   const data = Buffer.alloc(1);
   const sig = Buffer.alloc(1);
-  const type = typeof input;
   const errObj = {
     code: 'ERR_INVALID_ARG_TYPE',
     name: 'TypeError',
-    message: 'The "data" argument must be one of type Buffer, ' +
-             `TypedArray, or DataView. Received type ${type}`
   };
 
   assert.throws(() => crypto.sign(null, input, 'asdf'), errObj);
   assert.throws(() => crypto.verify(null, input, 'asdf', sig), errObj);
 
-  errObj.message = 'The "key" argument must be one of type string, Buffer, ' +
-                   `TypedArray, DataView, or KeyObject. Received type ${type}`;
-
   assert.throws(() => crypto.sign(null, data, input), errObj);
   assert.throws(() => crypto.verify(null, data, input, sig), errObj);
 
-  errObj.message = 'The "signature" argument must be one of type ' +
-                   `Buffer, TypedArray, or DataView. Received type ${type}`;
+  errObj.message = 'The "signature" argument must be an instance of ' +
+                   'Buffer, TypedArray, or DataView.' +
+                   common.invalidArgTypeHelper(input);
   assert.throws(() => crypto.verify(null, data, 'test', input), errObj);
 });
 
 {
-  const privKey = fixtures.readKey('ec-key.pem');
   const data = Buffer.from('Hello world');
-  [
-    crypto.createSign('sha1').update(data).sign(privKey),
-    crypto.sign('sha1', data, privKey)
-  ].forEach((sig) => {
-    // Signature length variability due to DER encoding
-    assert.strictEqual(sig.length >= 68, true);
+  const keys = [['ec-key.pem', 64], ['dsa_private_1025.pem', 40]];
+
+  for (const [file, length] of keys) {
+    const privKey = fixtures.readKey(file);
+    [
+      crypto.createSign('sha1').update(data).sign(privKey),
+      crypto.sign('sha1', data, privKey),
+      crypto.sign('sha1', data, { key: privKey, dsaEncoding: 'der' }),
+    ].forEach((sig) => {
+      // Signature length variability due to DER encoding
+      assert(sig.length >= length + 4 && sig.length <= length + 8);
+
+      assert.strictEqual(
+        crypto.createVerify('sha1').update(data).verify(privKey, sig),
+        true
+      );
+      assert.strictEqual(crypto.verify('sha1', data, privKey, sig), true);
+    });
+
+    // Test (EC)DSA signature conversion.
+    const opts = { key: privKey, dsaEncoding: 'ieee-p1363' };
+    let sig = crypto.sign('sha1', data, opts);
+    // Unlike DER signatures, IEEE P1363 signatures have a predictable length.
+    assert.strictEqual(sig.length, length);
+    assert.strictEqual(crypto.verify('sha1', data, opts, sig), true);
+    assert.strictEqual(crypto.createVerify('sha1')
+                             .update(data)
+                             .verify(opts, sig), true);
+
+    // Test invalid signature lengths.
+    for (const i of [-2, -1, 1, 2, 4, 8]) {
+      sig = crypto.randomBytes(length + i);
+      let result;
+      try {
+        result = crypto.verify('sha1', data, opts, sig);
+      } catch (err) {
+        assert.match(err.message, /asn1 encoding/);
+        assert.strictEqual(err.library, 'asn1 encoding routines');
+        continue;
+      }
+      assert.strictEqual(result, false);
+    }
+  }
+
+  // Test verifying externally signed messages.
+  const extSig = Buffer.from('494c18ab5c8a62a72aea5041966902bcfa229821af2bf65' +
+                             '0b5b4870d1fe6aebeaed9460c62210693b5b0a300033823' +
+                             '33d9529c8abd8c5948940af944828be16c', 'hex');
+  for (const ok of [true, false]) {
+    assert.strictEqual(
+      crypto.verify('sha256', data, {
+        key: fixtures.readKey('ec-key.pem'),
+        dsaEncoding: 'ieee-p1363'
+      }, extSig),
+      ok
+    );
 
     assert.strictEqual(
-      crypto.createVerify('sha1').update(data).verify(privKey, sig),
-      true
+      crypto.createVerify('sha256').update(data).verify({
+        key: fixtures.readKey('ec-key.pem'),
+        dsaEncoding: 'ieee-p1363'
+      }, extSig),
+      ok
     );
-    assert.strictEqual(crypto.verify('sha1', data, privKey, sig), true);
+
+    extSig[Math.floor(Math.random() * extSig.length)] ^= 1;
+  }
+
+  // Non-(EC)DSA keys should ignore the option.
+  const sig = crypto.sign('sha1', data, {
+    key: keyPem,
+    dsaEncoding: 'ieee-p1363'
   });
+  assert.strictEqual(crypto.verify('sha1', data, certPem, sig), true);
+  assert.strictEqual(
+    crypto.verify('sha1', data, {
+      key: certPem,
+      dsaEncoding: 'ieee-p1363'
+    }, sig),
+    true
+  );
+  assert.strictEqual(
+    crypto.verify('sha1', data, {
+      key: certPem,
+      dsaEncoding: 'der'
+    }, sig),
+    true
+  );
+
+  for (const dsaEncoding of ['foo', null, {}, 5, true, NaN]) {
+    assert.throws(() => {
+      crypto.sign('sha1', data, {
+        key: certPem,
+        dsaEncoding
+      });
+    }, {
+      code: 'ERR_INVALID_ARG_VALUE'
+    });
+  }
 }
 
 
@@ -552,4 +630,115 @@ common.expectsError(
   exec(cmd, common.mustCall((err, stdout, stderr) => {
     assert(stdout.includes('Verified OK'));
   }));
+}
+
+{
+  // Test RSA-PSS.
+  {
+    // This key pair does not restrict the message digest algorithm or salt
+    // length.
+    const publicPem = fixtures.readKey('rsa_pss_public_2048.pem');
+    const privatePem = fixtures.readKey('rsa_pss_private_2048.pem');
+
+    const publicKey = crypto.createPublicKey(publicPem);
+    const privateKey = crypto.createPrivateKey(privatePem);
+
+    for (const key of [privatePem, privateKey]) {
+      // Any algorithm should work.
+      for (const algo of ['sha1', 'sha256']) {
+        // Any salt length should work.
+        for (const saltLength of [undefined, 8, 10, 12, 16, 18, 20]) {
+          const signature = crypto.sign(algo, 'foo', { key, saltLength });
+
+          for (const pkey of [key, publicKey, publicPem]) {
+            const okay = crypto.verify(
+              algo,
+              'foo',
+              { key: pkey, saltLength },
+              signature
+            );
+
+            assert.ok(okay);
+          }
+        }
+      }
+    }
+  }
+
+  {
+    // This key pair enforces sha256 as the message digest and the MGF1
+    // message digest and a salt length of at least 16 bytes.
+    const publicPem =
+      fixtures.readKey('rsa_pss_public_2048_sha256_sha256_16.pem');
+    const privatePem =
+      fixtures.readKey('rsa_pss_private_2048_sha256_sha256_16.pem');
+
+    const publicKey = crypto.createPublicKey(publicPem);
+    const privateKey = crypto.createPrivateKey(privatePem);
+
+    for (const key of [privatePem, privateKey]) {
+      // Signing with anything other than sha256 should fail.
+      assert.throws(() => {
+        crypto.sign('sha1', 'foo', key);
+      }, /digest not allowed/);
+
+      // Signing with salt lengths less than 16 bytes should fail.
+      for (const saltLength of [8, 10, 12]) {
+        assert.throws(() => {
+          crypto.sign('sha256', 'foo', { key, saltLength });
+        }, /pss saltlen too small/);
+      }
+
+      // Signing with sha256 and appropriate salt lengths should work.
+      for (const saltLength of [undefined, 16, 18, 20]) {
+        const signature = crypto.sign('sha256', 'foo', { key, saltLength });
+
+        for (const pkey of [key, publicKey, publicPem]) {
+          const okay = crypto.verify(
+            'sha256',
+            'foo',
+            { key: pkey, saltLength },
+            signature
+          );
+
+          assert.ok(okay);
+        }
+      }
+    }
+  }
+
+  {
+    // This key enforces sha512 as the message digest and sha256 as the MGF1
+    // message digest.
+    const publicPem =
+      fixtures.readKey('rsa_pss_public_2048_sha512_sha256_20.pem');
+    const privatePem =
+      fixtures.readKey('rsa_pss_private_2048_sha512_sha256_20.pem');
+
+    const publicKey = crypto.createPublicKey(publicPem);
+    const privateKey = crypto.createPrivateKey(privatePem);
+
+    // Node.js usually uses the same hash function for the message and for MGF1.
+    // However, when a different MGF1 message digest algorithm has been
+    // specified as part of the key, it should automatically switch to that.
+    // This behavior is required by sections 3.1 and 3.3 of RFC4055.
+    for (const key of [privatePem, privateKey]) {
+      // sha256 matches the MGF1 hash function and should be used internally,
+      // but it should not be permitted as the main message digest algorithm.
+      for (const algo of ['sha1', 'sha256']) {
+        assert.throws(() => {
+          crypto.sign(algo, 'foo', key);
+        }, /digest not allowed/);
+      }
+
+      // sha512 should produce a valid signature.
+      const signature = crypto.sign('sha512', 'foo', key);
+
+      for (const pkey of [key, publicKey, publicPem]) {
+        const okay = crypto.verify('sha512', 'foo', pkey, signature);
+
+        assert.ok(okay);
+      }
+    }
+  }
 }

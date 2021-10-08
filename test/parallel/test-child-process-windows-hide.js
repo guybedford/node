@@ -1,4 +1,4 @@
-// Flags: --expose_internals
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 const assert = require('assert');
@@ -42,8 +42,7 @@ internalCp.spawnSync = common.mustCall(function(options) {
 }
 
 {
-  const callback = common.mustCall((err, stdout, stderr) => {
-    assert.ifError(err);
+  const callback = common.mustSucceed((stdout, stderr) => {
     assert.strictEqual(stdout.trim(), '42');
     assert.strictEqual(stderr.trim(), '');
   });

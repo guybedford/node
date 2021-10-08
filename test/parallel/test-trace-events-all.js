@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const CODE =
-  'setTimeout(() => { for (var i = 0; i < 100000; i++) { "test" + i } }, 1)';
+  'setTimeout(() => { for (let i = 0; i < 100000; i++) { "test" + i } }, 1)';
 
 const tmpdir = require('../common/tmpdir');
 tmpdir.refresh();
@@ -27,7 +27,7 @@ proc.once('exit', common.mustCall(() => {
         return false;
       if (trace.cat !== 'v8')
         return false;
-      if (trace.name !== 'V8.ScriptCompiler')
+      if (trace.name !== 'V8.GCScavenger')
         return false;
       return true;
     }));

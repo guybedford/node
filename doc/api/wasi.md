@@ -106,7 +106,7 @@ wat2wasm demo.wat
 ## Security
 
 WASI provides a capabilities-based model through which
-applications to be provided its own custom `env`, `preopens`, `stdin`, `stdout`,
+applications are provided their own custom `env`, `preopens`, `stdin`, `stdout`,
 `stderr`, and `exit` capabilities.
 
  **The current threat model Node.js does

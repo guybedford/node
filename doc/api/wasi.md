@@ -109,7 +109,7 @@ WASI provides a capabilities-based model through which
 applications are provided their own custom `env`, `preopens`, `stdin`, `stdout`,
 `stderr`, and `exit` capabilities.
 
- **The current threat model Node.js does
+ **The current Node.js threat model does
 aim to provide a full sandbox as is present in other WASI runtimes**
 While the capability features are supported, they do not form a comprehesive based
 security model in Node.js. In particular the the filesystem capability control is

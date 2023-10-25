@@ -4,11 +4,10 @@
 
 > Stability: 1 - Experimental
 
-<strong class="critical">The `node:wasi` module does not currently filesystem
-security properties of WASI sandboxing. Full support for secure WASI sandboxing
-remains a future feature. In the mean time, do not rely on it to run untrusted
-code.
-</strong>
+<strong class="critical">The `node:wasi` module does not currently provide the
+file system security properties of WASI sandboxing. Full support for secure WASI
+sandboxing remains a future feature. In the mean time, do not rely on it to run
+untrusted code. </strong>
 
 <!-- source_link=lib/wasi.js -->
 
@@ -109,12 +108,12 @@ WASI provides a capabilities-based secure sandboxing model. This allows each
 application to be provided its own custom `env`, `preopens`, `stdin`, `stdout`,
 `stderr`, and `exit` capabilities.
 
-While the sandboxing features are fully supported, the filesystem sandboxing is
+While the sandboxing features are fully supported, the file system sandboxing is
 currently insecure from a security perspective, due to the reliance on paths in
 Node.js.
 
 Work to implement an `openat`-based security primitive to support these security
-properties in libuv is tracking in [https://github.com/libuv/libuv/issues/4167].
+properties in libuv is tracking in \[<https://github.com/libuv/libuv/issues/4167>].
 
 ## Class: `WASI`
 

@@ -52,7 +52,74 @@ describe('ESM: WASM modules', { concurrency: !process.env.TEST_PARALLEL }, () =>
       [
         'import { strictEqual } from "node:assert";',
         `import * as wasmExports from ${JSON.stringify(fixtures.fileURL('es-modules/export-name-syntax-error.wasm'))};`,
-        'assert.strictEqual(wasmExports["?f!o:o<b>a[r]"]?.value, 12682);',
+        'assert.strictEqual(wasmExports["?f!o:o<b>a[r]"], 12682);',
+      ].join('\n'),
+    ]);
+
+    strictEqual(stderr, '');
+    strictEqual(stdout, '');
+    strictEqual(code, 0);
+  });
+
+  it('should properly handle all WebAssembly global types', async () => {
+    const { code, stderr, stdout } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-wasm-modules',
+      '--input-type=module',
+      '--eval',
+      [
+        'import { strictEqual, deepStrictEqual } from "node:assert";',
+        `import * as wasmExports from ${JSON.stringify(fixtures.fileURL('es-modules/globals.wasm'))};`,
+
+        // Test imported globals using exported getter functions
+        'strictEqual(wasmExports.getImportedI32(), 42);',
+        'strictEqual(wasmExports.getImportedMutI32(), 100);',
+        'strictEqual(wasmExports.getImportedI64(), 9223372036854775807n);',
+        'strictEqual(wasmExports.getImportedMutI64(), 200n);',
+        'strictEqual(Math.round(wasmExports.getImportedF32() * 100000) / 100000, 3.14159);',
+        'strictEqual(Math.round(wasmExports.getImportedMutF32() * 100000) / 100000, 2.71828);',
+        'strictEqual(wasmExports.getImportedF64(), 3.141592653589793);',
+        'strictEqual(wasmExports.getImportedMutF64(), 2.718281828459045);',
+
+        // Test local globals exported directly
+        'strictEqual(wasmExports[\'🚀localI32\'], 42);',
+        'strictEqual(wasmExports.localMutI32, 100);',
+        'strictEqual(wasmExports.localI64, 9223372036854775807n);',
+        'strictEqual(wasmExports.localMutI64, 200n);',
+        'strictEqual(Math.round(wasmExports.localF32 * 100000) / 100000, 3.14159);',
+        'strictEqual(Math.round(wasmExports.localMutF32 * 100000) / 100000, 2.71828);',
+        'strictEqual(wasmExports.localF64, 2.718281828459045);',
+        'strictEqual(wasmExports.localMutF64, 3.141592653589793);',
+
+        // Test modifying mutable globals and reading the new values
+        'wasmExports.setImportedMutI32(999);',
+        'strictEqual(wasmExports.getImportedMutI32(), 999);',
+
+        'wasmExports.setImportedMutI64(888n);',
+        'strictEqual(wasmExports.getImportedMutI64(), 888n);',
+
+        'wasmExports.setImportedMutF32(7.77);',
+        'strictEqual(Math.round(wasmExports.getImportedMutF32() * 100) / 100, 7.77);',
+
+        'wasmExports.setImportedMutF64(6.66);',
+        'strictEqual(wasmExports.getImportedMutF64(), 6.66);',
+
+        // Test modifying local mutable globals
+        'wasmExports.setLocalMutI32(555);',
+        'strictEqual(wasmExports.getLocalMutI32(), 555);',
+        'strictEqual(wasmExports.localMutI32, 100);',
+
+        'wasmExports.setLocalMutI64(444n);',
+        'strictEqual(wasmExports.getLocalMutI64(), 444n);',
+        'strictEqual(wasmExports.localMutI64, 200n);',
+
+        'wasmExports.setLocalMutF32(3.33);',
+        'strictEqual(Math.round(wasmExports.getLocalMutF32() * 100) / 100, 3.33);',
+        'strictEqual(Math.round(wasmExports.localMutF32 * 100) / 100, 2.72);',
+
+        'wasmExports.setLocalMutF64(2.22);',
+        'strictEqual(wasmExports.getLocalMutF64(), 2.22);',
+        'strictEqual(wasmExports.localMutF64, 3.141592653589793);',
       ].join('\n'),
     ]);
 

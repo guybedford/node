@@ -363,6 +363,40 @@ socket.bind({
 });
 ```
 
+### `socket.bindSync([port][, address])`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+* `port` {integer|Object} A port number, or an options object with `port`,
+  `address`, `exclusive`, and `fd` properties.
+* `address` {string} A numeric IP address, used when `port` is a number.
+* Returns: {Object} The bound address as returned by [`socket.address()`][].
+
+The synchronous counterpart of [`socket.bind()`][]. The `bind(2)` system call
+is performed synchronously and the resolved address is returned immediately,
+including the operating-system-assigned ephemeral port when `port` is `0`:
+
+```js
+const sock = dgram.createSocket('udp4');
+const addr = sock.bindSync({ address: '0.0.0.0', port: 0 });
+// addr === { address: '0.0.0.0', family: 'IPv4', port: 53124 }
+```
+
+A bind failure such as `EADDRINUSE` is thrown synchronously rather than emitted
+as an `'error'` event. After `bindSync()` returns, [`socket.address()`][] is
+valid synchronously and the `'listening'` event is emitted on the next tick.
+
+Because asynchronous name resolution is the one genuinely blocking part of
+[`socket.bind()`][], `bindSync()` requires `address` to be a numeric IP literal
+and never performs DNS resolution; callers must resolve names separately.
+Incoming datagrams continue to be delivered asynchronously via the
+[`'message'`][] event.
+
+`bindSync()` always creates its own socket handle and does not share a handle
+with the [`cluster`][] module's primary process.
+
 ### `socket.close([callback])`
 
 <!-- YAML
@@ -1015,6 +1049,7 @@ and `udp6` sockets). The bound address and port can be retrieved using
 [IPv6 Zone Indexes]: https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
 [RFC 4007]: https://tools.ietf.org/html/rfc4007
 [`'close'`]: #event-close
+[`'message'`]: #event-message
 [`ERR_SOCKET_BAD_PORT`]: errors.md#err_socket_bad_port
 [`ERR_SOCKET_BUFFER_SIZE`]: errors.md#err_socket_buffer_size
 [`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#err_socket_dgram_is_connected
@@ -1028,6 +1063,7 @@ and `udp6` sockets). The bound address and port can be retrieved using
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`socket.address().address`]: #socketaddress
 [`socket.address().port`]: #socketaddress
+[`socket.address()`]: #socketaddress
 [`socket.bind()`]: #socketbindport-address-callback
 [`socket.close()`]: #socketclosecallback
 [byte length]: buffer.md#static-method-bufferbytelengthstring-encoding

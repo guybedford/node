@@ -655,6 +655,59 @@ In most operating systems, listening to the [unspecified IPv6 address][] (`::`)
 may cause the `net.Server` to also listen on the [unspecified IPv4 address][]
 (`0.0.0.0`).
 
+### `server.listenSync(options)`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+* `options` {Object} Required. Supports the following properties:
+  * `port` {number} If omitted or `0`, the operating system will assign an
+    arbitrary unused port.
+  * `host` {string} A numeric IP address. Unlike [`server.listen()`][], no DNS
+    resolution is performed, so a host name is not accepted. If omitted, the
+    server accepts connections on the [unspecified IPv6 address][] (`::`) when
+    IPv6 is available, or the [unspecified IPv4 address][] (`0.0.0.0`)
+    otherwise.
+  * `path` {string} Will be ignored if `port` is specified. Used to specify a
+    Unix domain socket or Windows pipe to listen on.
+  * `backlog` {number} Common parameter of [`server.listen()`][] functions.
+  * `fd` {number} A file descriptor to listen on.
+  * `exclusive` {boolean} **Default:** `false`
+  * `readableAll` {boolean} For IPC pipes, makes the pipe readable for all
+    users. **Default:** `false`
+  * `writableAll` {boolean} For IPC pipes, makes the pipe writable for all
+    users. **Default:** `false`
+  * `ipv6Only` {boolean} For TCP servers, setting `ipv6Only` to `true` will
+    disable dual-stack support, i.e., binding to host `::` won't make
+    `0.0.0.0` be bound. **Default:** `false`
+  * `reusePort` {boolean} For TCP servers, setting `reusePort` to `true` allows
+    multiple sockets on the same host to bind to the same port. **Default:**
+    `false`
+* Returns: {Object} The bound address as returned by [`server.address()`][].
+
+The synchronous counterpart of [`server.listen()`][]. The `bind(2)` and
+`listen(2)` system calls are performed synchronously and the resolved address
+is returned immediately, including the operating-system-assigned ephemeral port
+when `port` is `0`:
+
+```js
+const server = net.createServer();
+const addr = server.listenSync({ host: '127.0.0.1', port: 0, backlog: 511 });
+// addr === { address: '127.0.0.1', family: 'IPv4', port: 53124 }
+```
+
+A bind failure such as `EADDRINUSE`, `EACCES`, or `EADDRNOTAVAIL` is thrown
+synchronously rather than emitted as an [`'error'`][] event. After
+`listenSync()` returns, [`server.address()`][] is valid synchronously and the
+[`'listening'`][] event is emitted on the next tick.
+
+Because asynchronous name resolution is the one genuinely blocking part of
+[`server.listen()`][], `listenSync()` requires `host` to be a numeric IP
+literal and never performs DNS resolution; callers must resolve names
+separately. Incoming connections continue to be delivered asynchronously via
+the [`'connection'`][] event.
+
 ### `server.listening`
 
 <!-- YAML
@@ -2061,6 +2114,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`net.getDefaultAutoSelectFamilyAttemptTimeout()`]: #netgetdefaultautoselectfamilyattempttimeout
 [`new net.Socket(options)`]: #new-netsocketoptions
 [`readable.setEncoding()`]: stream.md#readablesetencodingencoding
+[`server.address()`]: #serveraddress
 [`server.close()`]: #serverclosecallback
 [`server.dropMaxConnection`]: #serverdropmaxconnection
 [`server.listen()`]: #serverlisten

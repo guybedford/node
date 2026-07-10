@@ -770,11 +770,11 @@ threads.
 The socket must be a freshly accepted or created connection: it must still
 be attached to a live handle, must not be connecting or destroyed, and must not
 have started reading or have buffered data. Otherwise `postMessage()` throws
-`ERR_WORKER_HANDLE_NOT_TRANSFERABLE`. Both TCP sockets and, on Unix-like
-platforms, pipe-backed sockets (Unix domain socket connections) can be
-transferred. Pipe sockets cannot be transferred on Windows, consistent with
-sending pipe handles over a [`child_process`][] IPC channel. An [IPC][]
-channel socket cannot be transferred.
+`ERR_WORKER_HANDLE_NOT_TRANSFERABLE`. TCP sockets can be transferred on all
+platforms, as can the ends of [`net.socketpair()`][]. Pipe-backed sockets
+(Unix domain socket connections) can be transferred on Unix-like platforms
+only, consistent with sending pipe handles over a [`child_process`][] IPC
+channel. An [IPC][] channel socket cannot be transferred.
 
 ```cjs
 const net = require('node:net');
@@ -2287,6 +2287,56 @@ net.isIPv6('::1'); // returns true
 net.isIPv6('fhqwhgads'); // returns false
 ```
 
+## `net.socketpair([options])`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+* `options` {Object}
+  * `allowHalfOpen` {boolean} If set to `false`, then the socket will
+    automatically end the writable side when the readable side ends.
+    **Default:** `false`.
+* Returns: {net.Socket\[]} A two-element array of connected sockets.
+
+Creates a pair of connected, interchangeable stream [`net.Socket`][] instances
+backed by a single [`socketpair(2)`][] call, on Unix-like platforms. Both sockets are returned already
+open, readable, and writable synchronously: there is no listener, no path, and
+no `'connect'` event. Anything written to one socket becomes readable on the
+other.
+
+Both sockets start paused: no data is consumed from the pair until a socket is
+resumed, for example by attaching a `'data'` listener or calling
+[`socket.resume()`][].
+
+```js
+const net = require('node:net');
+
+const [a, b] = net.socketpair();
+b.on('data', (chunk) => {
+  console.log(chunk.toString()); // Prints: hello
+  a.destroy();
+  b.destroy();
+});
+a.write('hello');
+```
+
+This is useful for in-process communication and for handing one end to a
+[child process][] or a [`Worker`][] thread while retaining the other. Unlike
+binding a named [IPC][] endpoint, it needs no file system path and no
+cleanup.
+
+Either socket can be transferred to another thread by listing it in the
+`transferList` of a `postMessage()` call, as long as it has not yet been read
+from or written to. See [Transferring stream handles to other threads][].
+
+The pair are `AF_UNIX` stream sockets created with [`socketpair(2)`][], and
+are only supported on Unix-like platforms: on Windows this method throws
+`ERR_FEATURE_UNAVAILABLE_ON_PLATFORM`.
+
+If the socket pair cannot be created (for example, because the process has
+reached its open descriptor limit), this method throws synchronously.
+
 [IPC]: #ipc-support
 [Identifying paths for IPC connections]: #identifying-paths-for-ipc-connections
 [RFC 8305]: https://www.rfc-editor.org/rfc/rfc8305.txt
@@ -2305,8 +2355,9 @@ net.isIPv6('fhqwhgads'); // returns false
 [`ERR_INVALID_ARG_VALUE`]: errors.md#err_invalid_arg_value
 [`ERR_SOCKET_HANDLE_ADOPTED`]: errors.md#err_socket_handle_adopted
 [`EventEmitter`]: events.md#class-eventemitter
-[`child_process`]: child_process.md
+[`Worker`]: worker_threads.md#class-worker
 [`child_process.fork()`]: child_process.md#child_processforkmodulepath-args-options
+[`child_process`]: child_process.md
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`dns.lookup()` hints]: dns.md#supported-getaddrinfo-flags
 [`net.Server`]: #class-netserver
@@ -2322,6 +2373,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`net.createServer()`]: #netcreateserveroptions-connectionlistener
 [`net.getDefaultAutoSelectFamily()`]: #netgetdefaultautoselectfamily
 [`net.getDefaultAutoSelectFamilyAttemptTimeout()`]: #netgetdefaultautoselectfamilyattempttimeout
+[`net.socketpair()`]: #netsocketpairoptions
 [`new net.Socket(options)`]: #new-netsocketoptions
 [`readable.setEncoding()`]: stream.md#readablesetencodingencoding
 [`server.address()`]: #serveraddress
@@ -2350,12 +2402,14 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.setKeepAlive(options)`]: #socketsetkeepaliveoptions
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
+[`socketpair(2)`]: https://man7.org/linux/man-pages/man2/socketpair.2.html
 [`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
 [`worker_threads`]: worker_threads.md
 [`writable.destroy()`]: stream.md#writabledestroyerror
 [`writable.destroyed`]: stream.md#writabledestroyed
 [`writable.end()`]: stream.md#writableendchunk-encoding-callback
 [`writable.writableLength`]: stream.md#writablewritablelength
+[child process]: child_process.md
 [dot-decimal notation]: https://en.wikipedia.org/wiki/Dot-decimal_notation
 [half-closed]: https://tools.ietf.org/html/rfc1122
 [stream_writable_write]: stream.md#writablewritechunk-encoding-callback

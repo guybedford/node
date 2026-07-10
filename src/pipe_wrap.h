@@ -92,6 +92,9 @@ class PipeWrap : public ConnectionWrap<PipeWrap, uv_pipe_t> {
            bool ipc);
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+#ifndef _WIN32
+  static void SocketPair(const v8::FunctionCallbackInfo<v8::Value>& args);
+#endif
   static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);

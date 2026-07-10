@@ -39,12 +39,14 @@
 
 namespace node {
 
+using v8::Array;
 using v8::Context;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Int32;
+using v8::Integer;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
@@ -94,6 +96,10 @@ void PipeWrap::Initialize(Local<Object> target,
   SetConstructorFunction(context, target, "Pipe", t);
   env->set_pipe_constructor_template(t);
 
+#ifndef _WIN32
+  SetMethod(context, target, "socketpair", SocketPair);
+#endif
+
   // Create FunctionTemplate for PipeConnectWrap.
   auto cwt = AsyncWrap::MakeLazilyInitializedJSTemplate(env);
   SetConstructorFunction(context, target, "PipeConnectWrap", cwt);
@@ -110,6 +116,9 @@ void PipeWrap::Initialize(Local<Object> target,
 
 void PipeWrap::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(New);
+#ifndef _WIN32
+  registry->Register(SocketPair);
+#endif
   registry->Register(Bind);
   registry->Register(Listen);
   registry->Register(Connect);
@@ -232,6 +241,30 @@ BaseObjectPtr<BaseObject> PipeWrap::TransferData::Deserialize(
   wrap->set_fd(fd_);
   fd_ = -1;  // Ownership has been handed to the new handle.
   return BaseObjectPtr<BaseObject>(wrap);
+}
+#endif  // !_WIN32
+
+#ifndef _WIN32
+// socketpair() -> [fd0, fd1] on success, or a negative errno on failure. The
+// two AF_UNIX stream descriptors are already connected, non-blocking and
+// close-on-exec.
+void PipeWrap::SocketPair(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
+
+  uv_os_sock_t fds[2];
+  int err = uv_socketpair(
+      SOCK_STREAM, 0, fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE);
+  if (err != 0) {
+    args.GetReturnValue().Set(err);
+    return;
+  }
+
+  Local<Value> elements[] = {
+    Integer::New(isolate, fds[0]),
+    Integer::New(isolate, fds[1]),
+  };
+  args.GetReturnValue().Set(Array::New(isolate, elements, arraysize(elements)));
 }
 #endif  // !_WIN32
 

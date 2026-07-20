@@ -268,18 +268,19 @@ Maybe<int> ParseGeneralReply(Environment* env,
 
   const size_t rr_count = ares_dns_record_rr_cnt(dnsrec, ARES_SECTION_ANSWER);
 
+  bool has_cname = false;
+  for (size_t i = 0; i < rr_count; i++) {
+    const ares_dns_rr_t* rr =
+        ares_dns_record_rr_get(dnsrec, ARES_SECTION_ANSWER, i);
+    if (ares_dns_rr_get_type(rr) == ARES_REC_TYPE_CNAME) {
+      has_cname = true;
+      break;
+    }
+  }
+
   /* If it's `CNAME_OR_A`, a response that carries a CNAME record is reported
    * as a CNAME; otherwise it is reported as an A record. */
   if (*type == ns_t_cname_or_a) {
-    bool has_cname = false;
-    for (size_t i = 0; i < rr_count; i++) {
-      const ares_dns_rr_t* rr =
-          ares_dns_record_rr_get(dnsrec, ARES_SECTION_ANSWER, i);
-      if (ares_dns_rr_get_type(rr) == ARES_REC_TYPE_CNAME) {
-        has_cname = true;
-        break;
-      }
-    }
     *type = has_cname ? ns_t_cname : ns_t_a;
   }
 
@@ -379,9 +380,16 @@ Maybe<int> ParseGeneralReply(Environment* env,
       UNREACHABLE("Bad NS type");
   }
 
-  // Preserve the behavior of the previous ares_parse_*_reply() helpers, which
-  // reported an empty answer section as ARES_ENODATA.
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  if (count == 0) {
+    // Match the legacy ares_parse_*_reply() helpers: ares_parse_ns_reply()
+    // and ares_parse_ptr_reply() report ARES_ENODATA when no matching
+    // records are found, while ares_parse_a_reply() and
+    // ares_parse_aaaa_reply() treat a CNAME-only answer as an empty success.
+    if (*type == ns_t_a || *type == ns_t_aaaa) {
+      return Just<int>(has_cname ? ARES_SUCCESS : ARES_ENODATA);
+    }
+    return Just<int>(ARES_ENODATA);
+  }
   return Just<int>(ARES_SUCCESS);
 }
 
@@ -439,7 +447,10 @@ Maybe<int> ParseMxReply(Environment* env,
     }
   }
 
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  // Match the legacy ares_parse_*_reply() helpers, which reported an empty
+  // answer section as ARES_ENODATA but treated an answer carrying only other
+  // record types (such as a CNAME chain) as an empty success.
+  if (rr_count == 0) return Just<int>(ARES_ENODATA);
   return Just<int>(ARES_SUCCESS);
 }
 
@@ -510,7 +521,7 @@ Maybe<int> ParseCaaReply(Environment* env,
     }
   }
 
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  if (rr_count == 0) return Just<int>(ARES_ENODATA);
   return Just<int>(ARES_SUCCESS);
 }
 
@@ -650,7 +661,7 @@ Maybe<int> ParseTxtReply(Environment* env,
     }
   }
 
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  if (rr_count == 0) return Just<int>(ARES_ENODATA);
   return Just<int>(ARES_SUCCESS);
 }
 
@@ -716,7 +727,7 @@ Maybe<int> ParseSrvReply(Environment* env,
     }
   }
 
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  if (rr_count == 0) return Just<int>(ARES_ENODATA);
   return Just<int>(ARES_SUCCESS);
 }
 
@@ -792,7 +803,7 @@ Maybe<int> ParseNaptrReply(Environment* env,
     }
   }
 
-  if (count == 0) return Just<int>(ARES_ENODATA);
+  if (rr_count == 0) return Just<int>(ARES_ENODATA);
   return Just<int>(ARES_SUCCESS);
 }
 

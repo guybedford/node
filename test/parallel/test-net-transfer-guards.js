@@ -20,6 +20,28 @@ const { port1 } = new MessageChannel();
   });
 }
 
+// A pipe-backed Socket cannot be transferred on Windows, consistent with
+// sending pipe handles over the child_process IPC channel.
+if (common.isWindows) {
+  // Use a dedicated port: the buffered-data case below closes port1 from an
+  // asynchronous callback.
+  const { port1: pipePort } = new MessageChannel();
+  const server = net.createServer(common.mustCall((socket) => {
+    socket.destroy();
+    server.close();
+  }));
+  server.listen(common.PIPE, common.mustCall(() => {
+    const client = net.connect(common.PIPE, common.mustCall(() => {
+      assert.throws(() => pipePort.postMessage({ client }, [client]), {
+        code: 'ERR_WORKER_HANDLE_NOT_TRANSFERABLE',
+      });
+      client.destroy();
+      pipePort.close();
+    }));
+    client.on('error', () => {});
+  }));
+}
+
 // A Socket that has already consumed data cannot be transferred, because that
 // buffered data would be lost on the sending side.
 {

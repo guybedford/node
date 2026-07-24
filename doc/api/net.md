@@ -308,7 +308,7 @@ This class is used to create a TCP or [IPC][] server.
 A listening TCP `net.Server` can be transferred to a worker thread by listing it
 in the `transferList` of a [`worker_threads`][] `postMessage()` call. This moves
 the underlying listening socket to the receiving thread, where it resumes
-accepting connections. See [Transferring TCP handles to other threads][].
+accepting connections. See [Transferring stream handles to other threads][].
 
 ### `new net.Server([options][, connectionListener])`
 
@@ -756,9 +756,9 @@ is received. For example, it is passed to the listeners of a
 [`'connection'`][] event emitted on a [`net.Server`][], so the user can use
 it to interact with the client.
 
-### Transferring TCP handles to other threads
+### Transferring stream handles to other threads
 
-A connected TCP `net.Socket` can be moved to another thread by listing it in the
+A connected `net.Socket` can be moved to another thread by listing it in the
 `transferList` of a [`worker_threads`][] `postMessage()` call. After the
 transfer, the source socket is destroyed on the sending thread (further use
 fails with `ERR_STREAM_DESTROYED` rather than silently dropping data), and the
@@ -767,10 +767,14 @@ accept connections on one thread and distribute them across a pool of worker
 threads, for example to build a `node:cluster`-like model on top of worker
 threads.
 
-The socket must be a freshly accepted or created TCP connection: it must still
+The socket must be a freshly accepted or created connection: it must still
 be attached to a live handle, must not be connecting or destroyed, and must not
 have started reading or have buffered data. Otherwise `postMessage()` throws
-`ERR_WORKER_HANDLE_NOT_TRANSFERABLE`. Only TCP sockets are supported.
+`ERR_WORKER_HANDLE_NOT_TRANSFERABLE`. Both TCP sockets and, on Unix-like
+platforms, pipe-backed sockets (Unix domain socket connections) can be
+transferred. Pipe sockets cannot be transferred on Windows, consistent with
+sending pipe handles over a [`child_process`][] IPC channel. An [IPC][]
+channel socket cannot be transferred.
 
 ```cjs
 const net = require('node:net');
@@ -786,8 +790,9 @@ const server = net.createServer((socket) => {
 server.listen(8000);
 ```
 
-A listening [`net.Server`][] can be transferred the same way, which moves the
-listening socket itself (and its pending accept queue) to the receiving thread.
+A listening TCP [`net.Server`][] can be transferred the same way, which moves
+the listening socket itself (and its pending accept queue) to the receiving
+thread. Listening pipe servers cannot be transferred.
 
 ### `new net.Socket([options])`
 
@@ -2286,7 +2291,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [Identifying paths for IPC connections]: #identifying-paths-for-ipc-connections
 [RFC 8305]: https://www.rfc-editor.org/rfc/rfc8305.txt
 [Readable Stream]: stream.md#class-streamreadable
-[Transferring TCP handles to other threads]: #transferring-tcp-handles-to-other-threads
+[Transferring stream handles to other threads]: #transferring-stream-handles-to-other-threads
 [`'close'`]: #event-close
 [`'connect'`]: #event-connect
 [`'connection'`]: #event-connection
@@ -2300,6 +2305,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`ERR_INVALID_ARG_VALUE`]: errors.md#err_invalid_arg_value
 [`ERR_SOCKET_HANDLE_ADOPTED`]: errors.md#err_socket_handle_adopted
 [`EventEmitter`]: events.md#class-eventemitter
+[`child_process`]: child_process.md
 [`child_process.fork()`]: child_process.md#child_processforkmodulepath-args-options
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`dns.lookup()` hints]: dns.md#supported-getaddrinfo-flags

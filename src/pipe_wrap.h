@@ -26,6 +26,7 @@
 
 #include "async_wrap.h"
 #include "connection_wrap.h"
+#include "node_messaging.h"
 
 namespace node {
 
@@ -53,7 +54,38 @@ class PipeWrap : public ConnectionWrap<PipeWrap, uv_pipe_t> {
   SET_MEMORY_INFO_NAME(PipeWrap)
   SET_SELF_SIZE(PipeWrap)
 
+#ifndef _WIN32
+  // Transfer the underlying pipe to another thread via .postMessage(),
+  // mirroring TCPWrap: the fd is dup()ed and re-adopted (uv_pipe_open) in the
+  // receiving event loop. IPC-mode pipes are not transferable. Not supported
+  // on Windows, consistent with pipe handles over the child_process IPC
+  // channel.
+  BaseObject::TransferMode GetTransferMode() const override;
+  std::unique_ptr<worker::TransferData> TransferForMessaging() override;
+#endif
+
  private:
+#ifndef _WIN32
+  class TransferData : public worker::TransferData {
+   public:
+    explicit TransferData(int fd, SocketType type) : fd_(fd), type_(type) {}
+    ~TransferData() override;
+
+    BaseObjectPtr<BaseObject> Deserialize(
+        Environment* env,
+        v8::Local<v8::Context> context,
+        std::unique_ptr<worker::TransferData> self) override;
+
+    SET_NO_MEMORY_INFO()
+    SET_MEMORY_INFO_NAME(PipeWrapTransferData)
+    SET_SELF_SIZE(TransferData)
+
+   private:
+    int fd_;
+    SocketType type_;
+  };
+#endif
+
   PipeWrap(Environment* env,
            v8::Local<v8::Object> object,
            ProviderType provider,

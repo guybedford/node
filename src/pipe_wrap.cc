@@ -33,6 +33,10 @@
 #include "stream_wrap.h"
 #include "util-inl.h"
 
+#ifdef _WIN32
+#include <io.h>  // _open_osfhandle
+#endif
+
 namespace node {
 
 using v8::Context;
@@ -158,6 +162,78 @@ PipeWrap::PipeWrap(Environment* env,
   CHECK_EQ(r, 0);  // How do we proxy this error up to javascript?
                    // Suggestion: uv_pipe_init() returns void.
 }
+
+#ifndef _WIN32
+BaseObject::TransferMode PipeWrap::GetTransferMode() const {
+  // Only a live, non-IPC pipe connection that is not already being torn down
+  // can be transferred. Listening pipes are excluded: re-adoption goes through
+  // uv_pipe_open(), which produces a connection. Higher-level guards (no
+  // buffered reads, no pending writes) are enforced by the JS net.Socket
+  // layer before a handle reaches here.
+  if (!HandleWrap::IsAlive(this) || IsHandleClosing() || handle_.ipc ||
+      provider_type() == ProviderType::PROVIDER_PIPESERVERWRAP) {
+    return TransferMode::kDisallowCloneAndTransfer;
+  }
+  return TransferMode::kTransferable;
+}
+
+std::unique_ptr<worker::TransferData> PipeWrap::TransferForMessaging() {
+  CHECK_NE(GetTransferMode(), TransferMode::kDisallowCloneAndTransfer);
+
+  uv_os_fd_t fd;
+  if (uv_fileno(reinterpret_cast<const uv_handle_t*>(&handle_), &fd) != 0)
+    return {};
+
+  // Duplicate the descriptor so the receiving event loop owns an independent
+  // reference to the same pipe. We then close the source handle, which
+  // renders it unusable on this side (true transfer semantics) while the
+  // duplicate keeps the underlying pipe alive for the destination thread.
+  int dup_fd = dup(fd);
+  if (dup_fd < 0) return {};
+
+  // Stop watching the fd and tear down the source handle.
+  Close();
+
+  return std::make_unique<TransferData>(dup_fd, SOCKET);
+}
+
+PipeWrap::TransferData::~TransferData() {
+  // Only reached if the message was never delivered (e.g. the destination port
+  // closed in flight); close the dup'd fd so it is not leaked.
+  if (fd_ >= 0) {
+    uv_fs_t req;
+    CHECK_EQ(0, uv_fs_close(nullptr, &req, fd_, nullptr));
+    uv_fs_req_cleanup(&req);
+  }
+}
+
+BaseObjectPtr<BaseObject> PipeWrap::TransferData::Deserialize(
+    Environment* env,
+    Local<Context> context,
+    std::unique_ptr<worker::TransferData> self) {
+  // Construct a fresh PipeWrap in the receiving Environment. We cannot use
+  // PipeWrap::Instantiate() here because it requires a parent AsyncWrap to
+  // establish the async_hooks trigger id, and a deserialized handle has none.
+  if (env->pipe_constructor_template().IsEmpty()) return {};
+  Local<Function> constructor;
+  if (!env->pipe_constructor_template()->GetFunction(context).ToLocal(
+          &constructor)) {
+    return {};
+  }
+  Local<Value> type_arg = Int32::New(env->isolate(), type_);
+  Local<Object> obj;
+  if (!constructor->NewInstance(context, 1, &type_arg).ToLocal(&obj)) return {};
+
+  PipeWrap* wrap = BaseObject::Unwrap<PipeWrap>(obj);
+  if (wrap == nullptr) return {};
+
+  if (uv_pipe_open(&wrap->handle_, fd_) != 0) return {};
+
+  wrap->set_fd(fd_);
+  fd_ = -1;  // Ownership has been handed to the new handle.
+  return BaseObjectPtr<BaseObject>(wrap);
+}
+#endif  // !_WIN32
 
 void PipeWrap::Bind(const FunctionCallbackInfo<Value>& args) {
   PipeWrap* wrap;

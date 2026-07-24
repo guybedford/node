@@ -1209,7 +1209,8 @@ In particular, the significant differences to `JSON` are:
   * {MessagePort}s,
   * {net.BlockList}s,
   * {net.Server}s (TCP only, when listed in `transferList`),
-  * {net.Socket}s (TCP only, when listed in `transferList`),
+  * {net.Socket}s (TCP, or pipe on Unix-like platforms, when listed in
+    `transferList`),
   * {net.SocketAddress}es,
   * {X509Certificate}s.
 
@@ -1245,11 +1246,12 @@ anymore (even if they are not contained in `value`).
 Transferring a {net.Server} moves its listening socket — together with any
 pending connections in the accept queue — to the receiving thread's event loop.
 Transferring a {net.Socket} moves a single connection; the socket must be a
-freshly accepted or created TCP connection that has not yet started reading and
-has no buffered data, otherwise `postMessage()` throws
+freshly accepted or created TCP or pipe connection that has not yet started
+reading and has no buffered data, otherwise `postMessage()` throws
 `ERR_WORKER_HANDLE_NOT_TRANSFERABLE`. This makes it possible to accept
 connections on one thread and distribute them across a pool of worker threads.
-Only TCP handles are supported.
+TCP handles are supported on all platforms; pipe handles are supported on
+Unix-like platforms only.
 
 If `value` contains {SharedArrayBuffer} instances, those are accessible
 from either thread. They cannot be listed in `transferList`.

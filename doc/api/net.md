@@ -1727,7 +1727,10 @@ path is reported as the socket's `localAddress` once it connects.
 
 An un-adopted TCP `BoundSocket` can be moved to another thread by listing it in
 the `transferList` of a [`worker_threads`][] `postMessage()` call, see
-[Transferring TCP handles to other threads][]. Pipe binds are not transferable.
+[Transferring TCP handles to other threads][]. It can likewise be sent to a
+child process as the `sendHandle` argument of [`subprocess.send()`][]. In both
+cases the source is left in the adopted state. Pipe binds cannot be moved
+either way.
 
 When an adopted `BoundSocket` connects to a numeric IP literal, `connect(2)` is
 issued synchronously, so [`socket.localAddress`][] is resolved once
@@ -2356,6 +2359,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
 [`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
+[`subprocess.send()`]: child_process.md#subprocesssendmessage-sendhandle-options-callback
 [`worker_threads`]: worker_threads.md
 [`writable.destroy()`]: stream.md#writabledestroyerror
 [`writable.destroyed`]: stream.md#writabledestroyed

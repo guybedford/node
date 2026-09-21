@@ -25,6 +25,8 @@
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "node.h"
+#include "node_buffer.h"
+#include "node_errors.h"
 #include "node_external_reference.h"
 #include "node_profiling.h"
 #include "permission/permission.h"
@@ -32,11 +34,14 @@
 #include "v8-profiler.h"
 #include "v8.h"
 
+#include <limits>
+
 namespace node {
 namespace v8_utils {
 using v8::Array;
 using v8::BigInt;
 using v8::CFunction;
+using v8::CompiledWasmModule;
 using v8::Context;
 using v8::CpuProfile;
 using v8::CpuProfilingResult;
@@ -44,6 +49,7 @@ using v8::CpuProfilingStatus;
 using v8::DictionaryTemplate;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
+using v8::Global;
 using v8::HandleScope;
 using v8::HeapCodeStatistics;
 using v8::HeapSpaceStatistics;
@@ -53,13 +59,18 @@ using v8::Isolate;
 using v8::Local;
 using v8::LocalVector;
 using v8::MaybeLocal;
+using v8::MemorySpan;
 using v8::Number;
 using v8::Object;
+using v8::OwnedBuffer;
 using v8::ScriptCompiler;
 using v8::String;
 using v8::Uint32;
 using v8::V8;
 using v8::Value;
+using v8::WasmModuleCompilation;
+using v8::WasmModuleObject;
+using v8::WasmStreaming;
 
 #define HEAP_STATISTICS_PROPERTIES(V)                                          \
   V(0, total_heap_size, kTotalHeapSizeIndex)                                   \
@@ -357,6 +368,130 @@ void GetHashSeed(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   uint64_t hash_seed = isolate->GetHashSeed();
   args.GetReturnValue().Set(BigInt::NewFromUnsigned(isolate, hash_seed));
+}
+
+// Serialized layout: [uint32_t LE wire byte length][wire bytes][compiled code]
+// The compiled code is V8's CompiledWasmModule serialization, which is only
+// valid for the exact V8 build and flags that produced it, and may be empty if
+// no function had been compiled with the optimizing tier yet.
+void SerializeWasmModule(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  if (!args[0]->IsWasmModuleObject()) {
+    return THROW_ERR_INVALID_ARG_TYPE(
+        env, "The \"module\" argument must be a WebAssembly.Module");
+  }
+  CompiledWasmModule compiled =
+      args[0].As<WasmModuleObject>()->GetCompiledModule();
+  MemorySpan<const uint8_t> wire = compiled.GetWireBytesRef();
+  OwnedBuffer code = compiled.Serialize();
+  CHECK_LE(wire.size(), std::numeric_limits<uint32_t>::max());
+
+  Local<Object> buffer;
+  if (!Buffer::New(env, sizeof(uint32_t) + wire.size() + code.size)
+           .ToLocal(&buffer)) {
+    return;
+  }
+  uint8_t* data = reinterpret_cast<uint8_t*>(Buffer::Data(buffer));
+  uint32_t wire_size = static_cast<uint32_t>(wire.size());
+  for (size_t i = 0; i < sizeof(uint32_t); i++) {
+    data[i] = static_cast<uint8_t>(wire_size >> (8 * i));
+  }
+  memcpy(data + sizeof(uint32_t), wire.data(), wire.size());
+  if (code.size > 0) {
+    memcpy(data + sizeof(uint32_t) + wire.size(), code.buffer.get(), code.size);
+  }
+  args.GetReturnValue().Set(buffer);
+}
+
+// Deserializes previously serialized compiled code for `wire`. Returns an
+// empty MaybeLocal if V8 rejected the compiled code (e.g. produced by a
+// different V8 build or with different flags), in which case the module needs
+// to be compiled from the wire bytes instead.
+MaybeLocal<WasmModuleObject> DeserializeCompiledWasmModule(
+    Isolate* isolate,
+    MemorySpan<const uint8_t> wire,
+    MemorySpan<const uint8_t> code,
+    const WasmModuleObject::CompileOptions& options) {
+  // The resolution callback runs inside a HandleScope owned by V8, so the
+  // result must be persisted in a Global to outlive it.
+  struct State {
+    bool in_finish = true;
+    bool accepted = false;
+    Global<WasmModuleObject> module;
+  };
+  auto state = std::make_shared<State>();
+
+  WasmModuleCompilation compilation(options);
+  compilation.SetHasCompiledModuleBytes();
+  compilation.OnBytesReceived(wire.data(), wire.size());
+  compilation.Finish(
+      isolate,
+      [&](WasmStreaming::ModuleCachingInterface& cache) {
+        state->accepted = cache.SetCachedCompiledModuleBytes(code);
+      },
+      [state,
+       isolate](std::variant<Local<WasmModuleObject>, Local<Value>> result) {
+        // When the compiled code is accepted, V8 resolves synchronously
+        // within Finish(). Otherwise V8 falls back to compiling the wire
+        // bytes asynchronously; that result arrives later and is unused.
+        if (!state->in_finish) return;
+        if (auto* module = std::get_if<Local<WasmModuleObject>>(&result)) {
+          state->module.Reset(isolate, *module);
+        }
+      });
+  state->in_finish = false;
+  if (!state->accepted || state->module.IsEmpty()) return {};
+  return state->module.Get(isolate);
+}
+
+void DeserializeWasmModule(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
+  CHECK(args[0]->IsArrayBufferView());
+  CHECK(args[1]->IsUint32());
+  CHECK(args[2]->IsString() || args[2]->IsUndefined());
+
+  if (!AllowWasmCodeGenerationCallback(env->context(), Local<String>())) {
+    isolate->ThrowException(
+        v8::Exception::WasmCompileError(FIXED_ONE_BYTE_STRING(
+            isolate, "Wasm code generation disallowed by embedder")));
+    return;
+  }
+
+  ArrayBufferViewContents<uint8_t> contents(args[0]);
+  const uint8_t* data = contents.data();
+  size_t length = contents.length();
+  uint32_t wire_size = 0;
+  if (length >= sizeof(uint32_t)) {
+    for (size_t i = 0; i < sizeof(uint32_t); i++) {
+      wire_size |= static_cast<uint32_t>(data[i]) << (8 * i);
+    }
+  }
+  if (length < sizeof(uint32_t) || wire_size > length - sizeof(uint32_t)) {
+    return THROW_ERR_INVALID_ARG_VALUE(
+        env, "The \"buffer\" argument is not a serialized WebAssembly.Module");
+  }
+  MemorySpan<const uint8_t> wire(data + sizeof(uint32_t), wire_size);
+  MemorySpan<const uint8_t> code(wire.data() + wire_size,
+                                 length - sizeof(uint32_t) - wire_size);
+
+  WasmModuleObject::CompileOptions options;
+  options.builtins = args[1].As<Uint32>()->Value();
+  std::string constants_module;
+  if (args[2]->IsString()) {
+    constants_module = Utf8Value(isolate, args[2]).ToString();
+    options.imported_string_constants_module = constants_module.c_str();
+  }
+
+  Local<WasmModuleObject> module;
+  if (code.size() == 0 ||
+      !DeserializeCompiledWasmModule(isolate, wire, code, options)
+           .ToLocal(&module)) {
+    if (!WasmModuleObject::Compile(isolate, wire, options).ToLocal(&module)) {
+      return;
+    }
+  }
+  args.GetReturnValue().Set(module);
 }
 
 static const char* GetGCTypeName(v8::GCType gc_type) {
@@ -832,6 +967,14 @@ void Initialize(Local<Object> target,
 
   SetMethodNoSideEffect(context, target, "getHashSeed", GetHashSeed);
 
+  SetMethod(context, target, "serializeWasmModule", SerializeWasmModule);
+  SetMethod(context, target, "deserializeWasmModule", DeserializeWasmModule);
+  {
+    constexpr uint32_t kWasmBuiltinJsString =
+        WasmModuleObject::CompileOptions::Builtins::kJsString;
+    NODE_DEFINE_CONSTANT(target, kWasmBuiltinJsString);
+  }
+
   // GCProfiler
   Local<FunctionTemplate> t =
       NewFunctionTemplate(env->isolate(), GCProfiler::New);
@@ -860,6 +1003,8 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(UpdateHeapSpaceStatisticsBuffer);
   registry->Register(SetFlagsFromString);
   registry->Register(GetHashSeed);
+  registry->Register(SerializeWasmModule);
+  registry->Register(DeserializeWasmModule);
   registry->Register(SetHeapSnapshotNearHeapLimit);
   registry->Register(SetHeapProfileNearHeapLimit);
   registry->Register(GCProfiler::New);

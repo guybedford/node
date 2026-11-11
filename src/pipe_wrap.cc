@@ -44,7 +44,9 @@ using v8::Int32;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
+using v8::NewStringType;
 using v8::Object;
+using v8::String;
 using v8::Value;
 
 MaybeLocal<Object> PipeWrap::Instantiate(Environment* env,
@@ -83,7 +85,11 @@ void PipeWrap::Initialize(Local<Object> target,
     SetProtoMethod(isolate, t, "connect", Connect);
     SetProtoMethod(isolate, t, "open", Open);
 
-#ifdef _WIN32
+#ifndef _WIN32
+    // A named pipe has a single name rather than one per end, so no peer name
+    // is exposed on Windows.
+    SetProtoMethod(isolate, t, "getpeername", GetPeerName);
+#else
     SetProtoMethod(isolate, t, "setPendingInstances", SetPendingInstances);
 #endif
 
@@ -114,7 +120,9 @@ void PipeWrap::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Listen);
   registry->Register(Connect);
   registry->Register(Open);
-#ifdef _WIN32
+#ifndef _WIN32
+  registry->Register(GetPeerName);
+#else
   registry->Register(SetPendingInstances);
 #endif
   registry->Register(Fchmod);
@@ -257,6 +265,9 @@ void PipeWrap::Connect(const FunctionCallbackInfo<Value>& args) {
   if (err) {
     delete req_wrap;
   } else {
+#ifndef _WIN32
+    wrap->connect_called_ = true;
+#endif
     const char* path_type = (*name)[0] == '\0' ? "abstract socket" : "file";
     const char* pipe_path = (*name)[0] == '\0' ? (*name) + 1 : *name;
     TRACE_EVENT_NESTABLE_ASYNC_BEGIN2(TRACING_CATEGORY_NODE2(net, native),
@@ -270,6 +281,45 @@ void PipeWrap::Connect(const FunctionCallbackInfo<Value>& args) {
 
   args.GetReturnValue().Set(err);
 }
+
+#ifndef _WIN32
+void PipeWrap::GetPeerName(const FunctionCallbackInfo<Value>& args) {
+  PipeWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(
+      &wrap, args.This(), args.GetReturnValue().Set(UV_EBADF));
+  Environment* env = wrap->env();
+  CHECK(args[0]->IsObject());
+
+  // The connecting side already knows the name it connected to, so a peer is
+  // only named to the side that did not initiate the connection.
+  if (wrap->connect_called_) return args.GetReturnValue().Set(0);
+
+  MaybeStackBuffer<char, 256> buf;
+  size_t size = buf.capacity();
+  int err = uv_pipe_getpeername(&wrap->handle_, *buf, &size);
+  if (err == UV_ENOBUFS) {
+    buf.AllocateSufficientStorage(size);
+    size = buf.capacity();
+    err = uv_pipe_getpeername(&wrap->handle_, *buf, &size);
+  }
+
+  // An unbound peer has an empty name, which leaves the address unset.
+  if (err == 0 && size > 0) {
+    Local<String> name;
+    if (!String::NewFromUtf8(
+             env->isolate(), *buf, NewStringType::kNormal, size)
+             .ToLocal(&name) ||
+        args[0]
+            .As<Object>()
+            ->Set(env->context(), env->address_string(), name)
+            .IsNothing()) {
+      return;
+    }
+  }
+
+  args.GetReturnValue().Set(err);
+}
+#endif
 
 }  // namespace node
 

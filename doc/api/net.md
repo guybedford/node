@@ -1602,6 +1602,11 @@ If the socket is `ref`ed calling `ref` again will have no effect.
 
 <!-- YAML
 added: v0.5.10
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/REPLACEME
+    description: The path of a bound client is now reported for Unix domain
+                 sockets accepted by a server.
 -->
 
 * Type: {string}
@@ -1609,6 +1614,13 @@ added: v0.5.10
 The string representation of the remote IP address. For example,
 `'74.125.127.100'` or `'2001:4860:a005::68'`. Value may be `undefined` if
 the socket is destroyed (for example, if the client disconnected).
+
+For a [Unix domain socket][IPC] accepted by a server, this is the path the
+connecting client is bound to (see [`BoundSocket`][]), or `undefined` if the
+client is not bound to a path, which is the case for most clients. It is always
+`undefined` on the connecting side and for Windows named pipes.
+[`socket.remoteFamily`][] and [`socket.remotePort`][] are always `undefined`
+for these connections.
 
 ### `socket.remoteFamily`
 
@@ -2680,6 +2692,8 @@ console.log('listening on', server.address().port);
 [`socket.end()`]: #socketenddata-encoding-callback
 [`socket.localAddress`]: #socketlocaladdress
 [`socket.pause()`]: #socketpause
+[`socket.remoteFamily`]: #socketremotefamily
+[`socket.remotePort`]: #socketremoteport
 [`socket.resume()`]: #socketresume
 [`socket.setEncoding()`]: #socketsetencodingencoding
 [`socket.setKeepAlive()`]: #socketsetkeepalive
